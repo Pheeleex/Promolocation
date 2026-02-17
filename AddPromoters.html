@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Promoters Management</title>
+    <link
+      rel="stylesheet"
+      href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css"
+    />
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <link rel="stylesheet" href="css/Sidebar.css" />
+    <link rel="stylesheet" href="css/addpromoters.css" />
+  </head>
+
+  <body>
+    <div class="page-container">
+         <aside class="sidebar">
+        <div class="sidebar-logo">
+          <img src="./assets/auth-logo.png" alt="Main Logo" />
+        </div>
+
+        <nav class="sidebar-nav">
+          <ul>
+            <li>
+              <a href="/Promoters.html">
+                <img src="./assets/promoters.png" alt="" />
+                <span>Promoters List</span>
+              </a>
+            </li>
+            <li class="active">
+              <a href="AddPromoters.html">
+                <img src="./assets/add-personnel.png" alt="" />
+                <span>Add New Promoters</span>
+              </a>
+            </li>
+            <li>
+              <a href="/IncidentHistory.html">
+                <img src="./assets/Frame.png" alt="" />
+                <span>Incident History</span>
+              </a>
+            </li>
+          </ul>
+        </nav>
+
+        <div class="sidebar-footer">
+          <button class="logout-link">
+            <img src="./assets/Frame1.png" alt="" /> <span>Logout</span>
+          </button>
+        </div>
+      </aside>
+
+      <main class="main-content">
+        <div class="add-promoter-container">
+          <h1 class="page-title">Add New Promoter</h1>
+
+          <div class="form-card">
+            <div class="form-header">
+              <span class="close-form">x</span>
+            </div>
+
+            <form id="addPromoterForm">
+              <div class="form-group">
+                <label>Promoter’s Name</label>
+                <input type="text" placeholder="Enter name" />
+              </div>
+
+              <div class="form-group">
+                <label>Promoter’s Email</label>
+                <input type="email" placeholder="Enter email" />
+              </div>
+
+              <div class="form-group">
+                <label>Promoter’s ID</label>
+                <input type="text" placeholder="Enter ID" />
+              </div>
+
+              <div class="form-group">
+                <label>Promoter’s Password</label>
+                <input type="password" placeholder="Enter password" />
+              </div>
+
+              <div class="form-group">
+                <label>Role</label>
+                <select>
+                  <option>Brand Ambassador</option>
+                  <option>Sales Manager</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label>Assign Region</label>
+                <select>
+                  <option>Europe, Russia</option>
+                  <option>Africa, Nigeria</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label>Location</label>
+                <select>
+                  <option>koroloy , Moscow</option>
+                  <option>Ikeja, Lagos</option>
+                </select>
+              </div>
+
+              <div class="deactivate-section">
+                <span class="deactivate-label">Deactivate</span>
+                <label class="switch">
+                  <input type="checkbox" />
+                  <span class="slider round"></span>
+                </label>
+              </div>
+
+              <button type="submit" class="submit-btn">Add Promoter</button>
+            </form>
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <script src="js/addPromoters-logic.js"></script>
+  </body>
+</html>

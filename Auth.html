@@ -1,83 +1,146 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Admin Login</title>
-    <link rel="stylesheet" href="Auth.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
-</head>
-<body>
-
+    <link rel="stylesheet" href="css/Auth.css" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
     <div class="login-container">
-        <div class="logo-wrapper">
-            <img src="./assets/auth-logo.png" alt="Logo" class="logo">
+      <div class="logo-wrapper">
+        <img src="./assets/auth-logo.png" alt="Logo" class="logo" />
+      </div>
+
+      <h1>Admin Login</h1>
+
+      <form class="login-form">
+        <div class="input-group">
+          <label for="userid">Enter Your User ID/Email</label>
+          <input type="text" id="userid" placeholder="Email..." />
         </div>
 
-        <h1>Admin Login</h1>
+        <div class="input-group">
+          <label for="password">Password</label>
+          <input type="password" id="password" placeholder="Password...." />
+        </div>
 
-        <form class="login-form">
-            <div class="input-group">
-                <label for="userid">Enter Your User ID</label>
-                <input type="text" id="userid" placeholder="Email...">
-            </div>
-
-            <div class="input-group">
-                <label for="password">Password</label>
-                <input type="password" id="password" placeholder="Password....">
-            </div>
-
-            <button type="submit" class="login-btn">Login</button>
-        </form>
+        <button type="submit" class="login-btn">Login</button>
+      </form>
     </div>
 
-   <script>
-    const loginForm = document.querySelector('.login-form');
-const emailInput = document.getElementById('userid');
-const passwordInput = document.getElementById('password');
+    <script>
+      const loginForm = document.querySelector(".login-form");
+      const userInput = document.getElementById("userid");
+      const passwordInput = document.getElementById("password");
 
-// --- NEW: Real-time "Clear Error" Listeners ---
-// These trigger every time the user types a character
-emailInput.addEventListener('input', () => {
-    emailInput.classList.remove('input-error');
-});
+      // -------------------------------
+      // Dummy Users Database
+      // -------------------------------
+      const users = [
+        {
+          id: "12345",
+          email: "admin1@email.com",
+          name: "Admin One",
+          password: "17122002",
+        },
+        {
+          id: "67890",
+          email: "admin2@email.com",
+          name: "Admin Two",
+          password: "17122002",
+        },
+        {
+          id: "54321",
+          email: "manager@email.com",
+          name: "Manager",
+          password: "17122002",
+        },
+      ];
 
-passwordInput.addEventListener('input', () => {
-    passwordInput.classList.remove('input-error');
-});
+      // -------------------------------
+      // Redirect if already logged in
+      // -------------------------------
+      const existingUser = localStorage.getItem("authUser");
 
-// --- Validation Logic ---
-loginForm.addEventListener('submit', function(e) {
-    e.preventDefault();
+      if (existingUser) {
+        window.location.href = "promoters.html"; // default page after login
+      }
 
-    const emailValue = emailInput.value.trim();
-    const passwordValue = passwordInput.value.trim();
+      // -------------------------------
+      // Real-time clear error
+      // -------------------------------
+      userInput.addEventListener("input", () => {
+        userInput.classList.remove("input-error");
+      });
 
-    // Reset errors before re-validating
-    emailInput.classList.remove('input-error');
-    passwordInput.classList.remove('input-error');
+      passwordInput.addEventListener("input", () => {
+        passwordInput.classList.remove("input-error");
+      });
 
-    if (!emailValue && !passwordValue) {
-        console.log("Missing values: Both empty.");
-        emailInput.classList.add('input-error');
-        passwordInput.classList.add('input-error');
-    } 
-    else if (!emailValue) {
-        console.log("Missing value: Email empty.");
-        emailInput.classList.add('input-error');
-        emailInput.focus();
-    } 
-    else if (!passwordValue) {
-        console.log("Missing value: Password empty.");
-        passwordInput.classList.add('input-error'); // Added this for consistency
-        passwordInput.focus();
-    } 
-    else {
-        console.log("Validation Successful!");
-        // Redirecting to your dashboard
-        window.location.href = "index.html";
-    }
-});
-   </script>
-</body>
+      // -------------------------------
+      // Login Logic
+      // -------------------------------
+      loginForm.addEventListener("submit", function (e) {
+        e.preventDefault();
+
+        const userValue = userInput.value.trim();
+        const passwordValue = passwordInput.value.trim();
+
+        userInput.classList.remove("input-error");
+        passwordInput.classList.remove("input-error");
+
+        if (!userValue && !passwordValue) {
+          userInput.classList.add("input-error");
+          passwordInput.classList.add("input-error");
+          return;
+        }
+
+        if (!userValue) {
+          userInput.classList.add("input-error");
+          userInput.focus();
+          return;
+        }
+
+        if (!passwordValue) {
+          passwordInput.classList.add("input-error");
+          passwordInput.focus();
+          return;
+        }
+
+        // -------------------------------
+        // Check if user exists
+        // -------------------------------
+        const foundUser = users.find(
+          (user) =>
+            (user.id === userValue || user.email === userValue) &&
+            user.password === passwordValue,
+        );
+
+        if (!foundUser) {
+          alert("Invalid ID/Email or Password");
+          return;
+        }
+
+        // -------------------------------
+        // Store user session
+        // -------------------------------
+        localStorage.setItem(
+          "authUser",
+          JSON.stringify({
+            id: foundUser.id,
+            email: foundUser.email,
+            name: foundUser.name,
+          }),
+        );
+
+        // Redirect to default page
+        window.location.href = "promoters.html";
+      });
+    </script>
+  </body>
 </html>

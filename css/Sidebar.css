@@ -1,0 +1,82 @@
+.sidebar {
+    background-color: #0E2B63;
+    color: white;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    padding: 40px 0; /* Padding at top and bottom of sidebar */
+    width: 260px;
+    flex-shrink: 0;
+}
+
+.sidebar-logo {
+    padding: 0 40px 60px; /* Aligns with Figma spacing */
+    text-align: left;
+}
+
+.sidebar-logo img {
+    width: 80px; /* Adjust based on your logo size */
+    height: auto;
+}
+
+.sidebar-nav {
+    flex-grow: 1;
+}
+
+.sidebar-nav ul {
+    list-style: none;
+    padding: 0 15px; /* Creates the gap for the active background */
+}
+
+.sidebar-nav li {
+    margin-bottom: 8px;
+}
+
+.sidebar-nav a, .logout-link {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 14px 25px;
+    color: rgba(255, 255, 255, 0.8); /* Slightly dimmed text for non-active */
+    text-decoration: none;
+    font-size: 15px;
+    font-weight: 500;
+    border-radius: 8px; /* Rounded corners for the active highlight */
+    transition: all 0.2s ease;
+}
+
+/* Figma Active State: Slightly lighter blue with white text */
+.sidebar-nav li.active a {
+    background: rgba(255, 255, 255, 0.15); /* Transparent white overlay */
+    color: #FFFFFF;
+}
+
+.sidebar-nav a:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.sidebar-nav img, .logout-link img {
+    width: 20px;
+    height: 20px;
+    object-fit: contain;
+    filter: brightness(0) invert(1); /* Ensures icons are white */
+}
+
+/* Sidebar Footer / Logout */
+.sidebar-footer {
+    padding: 0 15px;
+    margin-top: auto; /* Pushes logout to the bottom */
+}
+
+.logout-link {
+    background: none;
+    border: none;
+    width: 100%;
+    cursor: pointer;
+    font-family: inherit;
+    justify-content: flex-start;
+}
+
+.logout-link:hover {
+    background: rgba(255, 255, 255, 0.1);
+}

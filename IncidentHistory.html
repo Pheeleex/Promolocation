@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Incident History</title>
+    <link
+      rel="stylesheet"
+      href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css"
+    />
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <link rel="stylesheet" href="css/Promoters.css" />
+  </head>
+
+  <body>
+    <div class="page-container">
+      <aside class="sidebar">
+        <div class="sidebar-logo">
+          <img src="./assets/auth-logo.png" alt="Main Logo" />
+        </div>
+
+        <nav class="sidebar-nav">
+          <ul>
+            <li>
+              <a href="/Promoters.html">
+                <img src="./assets/promoters.png" alt="" />
+                <span>Promoters List</span>
+              </a>
+            </li>
+            <li>
+              <a href="AddPromoters.html">
+                <img src="./assets/add-personnel.png" alt="" />
+                <span>Add New Promoters</span>
+              </a>
+            </li>
+            <li class="active">
+              <a href="/IncidentHistory.html">
+                <img src="./assets/Frame.png" alt="" />
+                <span>Incident History</span>
+              </a>
+            </li>
+          </ul>
+        </nav>
+
+        <div class="sidebar-footer">
+          <button class="logout-link">
+            <img src="./assets/Frame1.png" alt="" /> <span>Logout</span>
+          </button>
+        </div>
+      </aside>
+
+      <main class="main-content">
+        <div class="main-card">
+          <div class="card-header">
+            <h2>Incident History</h2>
+            <div class="search-section">
+              <div class="search-bar">
+                <img src="./assets/search.png" alt="search" />
+                <input
+                  type="text"
+                  id="customSearch"
+                  placeholder="Search Promoter..."
+                />
+              </div>
+            </div>
+          </div>
+
+          <div class="table-outer-border">
+            <table
+              id="promotersTable"
+              class="display nowrap"
+              style="width: 100%"
+            >
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>User ID</th>
+                  <th>Issue</th>
+                  <th>Role</th>
+                  <th>Location</th>
+                  <th>Date</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+
+          <div class="card-footer">
+            <div class="pagination-pill">
+              <span id="prevPage" class="arrow">&lt;</span>
+              <span id="pageIndicator">1 of 5</span>
+              <span id="nextPageTrigger" class="arrow">&gt;</span>
+            </div>
+            <button id="nextPageBtn" class="next-btn">Next Page &gt;</button>
+            <button id="previousPageBtn" class="next-btn">
+              &lt; Previous Page
+            </button>
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <script src="js/incident-logic.js"></script>
+  </body>
+</html>
