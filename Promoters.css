@@ -1,196 +1,177 @@
+:root {
+    --navy: #0E2B63;
+    --card-bg: #E1EDFF; /* Light blue container */
+    --border-blue: #A5C8FF;
+    --text-gray: #64748B;
+}
+
 body {
-  font-family: Arial, sans-serif;
-  background-color: #f2f6fb;
-  margin: 0;
-  padding: 40px;
+    background-color: #F8FAFC;
+    font-family: 'Inter', sans-serif;
+    padding: 20px;
 }
 
-.page-wrapper {
-  display: flex;
-  justify-content: center;
+.main-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border-blue);
+    border-radius: 12px;
+    padding: 24px;
+    max-width: 1200px;
+    margin: 0 auto;
 }
-
-.card {
-  background: white;
-  border-radius: 8px;
-  border: 1px solid #E6EDF8;
-  padding: 0; /* remove padding */
-}
-
 
 .card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 15px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
 }
 
 .card-header h2 {
-  margin: 0;
-  color: #1b3c6b;
+    color: var(--navy);
+    font-size: 22px;
+    font-weight: 700;
 }
 
-.search-wrapper {
-  display: flex;
-  align-items: center;
-  gap: 16px;
+/* Search Bar Styling */
+.search-section {
+    display: flex;
+    gap: 12px;
 }
 
-.search-input-group {
-  display: flex;
-  align-items: center;
-  background: #ffffff;
-  border: 1px solid #b6c6e3;
-  border-radius: 24px;
-  padding: 6px 14px;
-  width: 280px;
+.search-bar {
+    background: transparent;
+    border: 1px solid var(--border-blue);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    padding: 0 12px;
+    width: 260px;
 }
 
-.search-input-group input {
-  border: none;
-  outline: none;
-  font-size: 14px;
-  width: 100%;
-  margin-left: 8px;
-}
-
-.search-icon {
-  font-size: 14px;
-  opacity: 0.6;
+.search-bar input {
+    border: none;
+    outline: none;
+    padding: 8px;
+    width: 100%;
+    font-size: 13px;
 }
 
 #searchBtn {
-  padding: 10px 24px;
-  border-radius: 24px;
-  border: none;
-  background: #1b3c6b;
-  color: white;
-  font-weight: 500;
-  cursor: pointer;
+    background: var(--navy);
+    color: white;
+    border: none;
+    padding: 8px 24px;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
 }
 
-#searchBtn:hover {
-  opacity: 0.9;
+#customSearch{
+    background-color: transparent;
 }
 
-/* Status styling */
-.status {
-  padding: 4px 10px;
-  border-radius: 12px;
-  font-size: 12px;
-  font-weight: bold;
+/* Table Design */
+.table-outer-border {
+    background: white;
+    border: 2px solid var(--border-blue);
+    border-radius: 8px;
+    overflow: hidden;
 }
 
-.status.active {
-  background: #d4edda;
-  color: #155724;
-}
-
-.status.inactive {
-  background: #f8d7da;
-  color: #721c24;
-}
-
-.action-btn {
-  padding: 5px 12px;
-  background: #1b3c6b;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-}
-
-.table-wrapper {
-  overflow-x: auto;
-}
-
-/* Remove ALL default DataTables chrome */
-.dataTables_wrapper .dataTables_paginate,
-.dataTables_wrapper .dataTables_filter,
-.dataTables_wrapper .dataTables_length,
-.dataTables_wrapper .dataTables_info {
-  display: none !important;
-}
-
-/* Reset table */
 table.dataTable {
-  border-collapse: collapse !important;
-  width: 100% !important;
-  background: white !important;
-  border: none !important;
+    border: none !important;
+    border-collapse: collapse !important;
 }
 
-/* ===== HEADER ===== */
 table.dataTable thead th {
-  background-color: #CEDAEF !important;
-  color: #0E2B63 !important;
-  font-weight: 600;
-  padding: 16px 14px !important;
-  border: none !important;
-}
-
-/* Remove sorting icons */
-table.dataTable thead .sorting,
-table.dataTable thead .sorting_asc,
-table.dataTable thead .sorting_desc {
-  background-image: none !important;
-}
-
-/* ===== BODY ===== */
-table.dataTable tbody {
-  background: white !important;
+    background: #F1F7FF !important;
+    color: var(--navy) !important;
+    border-bottom: 1px solid var(--border-blue) !important;
+    padding: 12px 15px !important;
+    font-size: 14px;
 }
 
 table.dataTable tbody td {
-  padding: 16px 14px !important;
-  border-bottom: 1px solid #E6EDF8 !important;
-  color: #0E2B63;
+    border-bottom: 1px solid #EDF2F7 !important;
+    padding: 12px 15px !important;
+    color: var(--navy);
+    font-size: 13px;
+    vertical-align: middle;
 }
 
-/* Remove hover if Figma doesn’t show one */
-table.dataTable tbody tr:hover {
-  background-color: white !important;
+.email-text {
+    display: block;
+    font-size: 11px;
+    color: var(--text-gray);
+    font-weight: 400;
 }
 
-/* Footer styling */
-.table-footer {
-  background: #CEDAEF;
-  padding: 16px;
-  border-radius: 0 0 8px 8px;
-
-  display: flex;
-  justify-content: flex-end; /* pushes everything right */
-  align-items: center;
-  gap: 20px;
+/* Action Icons Styling */
+.action-icons {
+    display: flex;
+    gap: 12px;
+    align-items: center;
 }
 
-
-.page-info {
-  font-size: 14px;
-  color: #0E2B63;
-  font-weight: 500;
+.icon-btn {
+    cursor: pointer;
+    transition: transform 0.2s ease;
+    background: none;
+    border: none;
+    padding: 0;
+    display: flex;
+    align-items: center;
 }
 
-
-.pagination-controls {
-  display: flex;
-  gap: 10px;
+.icon-btn:hover {
+    transform: scale(1.1);
 }
 
-.pagination-controls button {
-  padding: 8px 16px;
-  border-radius: 20px;
-  border: none;
-  background: #1b3c6b;
-  color: white;
-  cursor: pointer;
+.icon-edit {
+    color: #3B82F6; /* Professional Blue */
 }
 
-.pagination-controls button:hover {
-  opacity: 0.9;
+.icon-delete {
+    color: #EF4444; /* Alert Red */
 }
 
-.page-info {
-  font-size: 14px;
-  color: #1b3c6b;
+/* Adjusting SVG size to fit the row height naturally */
+.action-icons svg {
+    width: 20px;
+    height: 20px;
+}
+
+/* Pagination Footer */
+.card-footer {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 15px;
+    margin-top: 20px;
+}
+
+.pagination-pill {
+    background: white;
+    border: 1px solid var(--border-blue);
+    border-radius: 20px;
+    padding: 6px 15px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    color: var(--navy);
+    font-weight: 600;
+    font-size: 13px;
+}
+
+.arrow { cursor: pointer; padding: 0 5px; }
+
+.next-btn {
+    background: var(--navy);
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 20px;
+    font-weight: 600;
+    cursor: pointer;
 }
