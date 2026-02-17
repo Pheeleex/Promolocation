@@ -1,0 +1,165 @@
+.logout-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(15, 20, 50, 0.45);
+        backdrop-filter: blur(3px);
+        -webkit-backdrop-filter: blur(3px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.25s ease;
+      }
+
+      .logout-overlay.active {
+        opacity: 1;
+        pointer-events: all;
+      }
+
+      /* ── Modal Card ── */
+      .logout-modal {
+        background: #ffffff;
+        border-radius: 18px;
+        padding: 40px 44px 36px;
+        width: 100%;
+        max-width: 420px;
+        text-align: center;
+        box-shadow:
+          0 4px 16px rgba(0, 0, 0, 0.06),
+          0 24px 64px rgba(26, 36, 84, 0.18);
+        transform: translateY(16px) scale(0.97);
+        transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+      }
+
+      .logout-overlay.active .logout-modal {
+        transform: translateY(0) scale(1);
+      }
+
+      /* ── Icon ── */
+      .logout-icon {
+        width: 68px;
+        height: 68px;
+        border-radius: 50%;
+        background: #fff3f4;
+        border: 2px solid #fcd5d8;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 20px;
+      }
+
+      .logout-icon svg {
+        width: 30px;
+        height: 30px;
+        color: #e05260;
+      }
+
+      /* ── Text ── */
+      .logout-modal h2 {
+        font-family: 'Inter', sans-serif;
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: #1a2454;
+        margin-bottom: 10px;
+      }
+
+      .logout-modal p {
+        font-family: 'Inter', sans-serif;
+        font-size: 0.9rem;
+        color: #7a8aaa;
+        line-height: 1.6;
+        margin-bottom: 28px;
+      }
+
+      /* ── Divider ── */
+      .logout-modal .modal-divider {
+        height: 1px;
+        background: linear-gradient(to right, transparent, #dce6f0, transparent);
+        margin-bottom: 24px;
+      }
+
+      /* ── Button Row ── */
+      .logout-modal .modal-actions {
+        display: flex;
+        gap: 12px;
+        justify-content: center;
+      }
+
+      .btn-cancel,
+      .btn-confirm {
+        flex: 1;
+        padding: 13px 0;
+        border-radius: 50px;
+        font-family: 'Inter', sans-serif;
+        font-size: 0.92rem;
+        font-weight: 600;
+        cursor: pointer;
+        border: none;
+        transition: background 0.2s, transform 0.15s, box-shadow 0.2s;
+      }
+
+      /* Cancel — outlined navy */
+      .btn-cancel {
+        background: transparent;
+        color: #1a2454;
+        border: 2px solid #c8d6e8;
+      }
+
+      .btn-cancel:hover {
+        background: #f0f4fa;
+        border-color: #9ecfcf;
+        transform: translateY(-1px);
+      }
+
+      /* Confirm — solid red */
+      .btn-confirm {
+        background: #e05260;
+        color: #ffffff;
+        box-shadow: 0 4px 14px rgba(224, 82, 96, 0.30);
+      }
+
+      .btn-confirm:hover {
+        background: #c9404e;
+        transform: translateY(-1px);
+        box-shadow: 0 6px 18px rgba(224, 82, 96, 0.38);
+      }
+
+      .btn-cancel:active,
+      .btn-confirm:active {
+        transform: translateY(0);
+      }
+
+      /* ============================================================
+         DEMO PAGE STYLES (remove if not needed)
+         ============================================================ */
+      *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+      body {
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #f4f7fb;
+        font-family: 'Inter', sans-serif;
+      }
+
+      .demo-trigger {
+        padding: 13px 32px;
+        background: #1a2454;
+        color: #fff;
+        border: none;
+        border-radius: 50px;
+        font-family: 'Inter', sans-serif;
+        font-size: 0.95rem;
+        font-weight: 600;
+        cursor: pointer;
+        box-shadow: 0 4px 16px rgba(26, 36, 84, 0.25);
+        transition: background 0.2s, transform 0.15s;
+      }
+
+      .demo-trigger:hover {
+        background: #243070;
+        transform: translateY(-1px);
+      }
