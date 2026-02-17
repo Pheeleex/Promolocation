@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Promoters Management</title>
+
+    <!-- DataTables CSS -->
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css" />
+
+    <!-- jQuery -->
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+
+    <!-- DataTables JS -->
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+
+    <link rel="stylesheet" href="Promoters.css" />
+</head>
+
+<body>
+
+    <div class="page-wrapper">
+        <div class="card">
+
+            <div class="card-header">
+                <h2>Promoters Management</h2>
+
+                <div class="search-wrapper">
+                    <div class="search-input-group">
+                        <span class="search-icon">🔍</span>
+                        <input type="text" id="customSearch" placeholder="Search Promoter..." />
+                    </div>
+                    <button id="searchBtn">Search</button>
+                </div>
+            </div>
+
+            <div class="table-wrapper">
+                <table id="promotersTable" class="display nowrap" style="width:100%">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>User ID</th>
+                            <th>Role</th>
+                            <th>Assigned Region</th>
+                            <th>Location</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                </table>
+            </div>
+
+            <div class="table-footer">
+                <div class="page-info">
+                    <span id="pageIndicator">1 of 1</span>
+                </div>
+                <div class="pagination-controls">
+                    <button id="prevPage">Previous</button>
+                    <button id="nextPage">Next Page</button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        $(document).ready(function () {
+
+            const promoters = [
+                {
+                    name: "Emmanuel Raphael",
+                    userId: "12345",
+                    role: "Sales Manager",
+                    region: "Africa, Nigeria",
+                    location: "Ikeja, Lagos",
+                    status: "Active"
+                },
+                {
+                    name: "Maggy Edozie",
+                    userId: "12346",
+                    role: "Location Manager",
+                    region: "Africa, Ghana",
+                    location: "Tema, Accra",
+                    status: "Active"
+                },
+                {
+                    name: "Olamolu Jumat",
+                    userId: "12347",
+                    role: "Location Manager",
+                    region: "Europe, Russia",
+                    location: "Korolyov, Moscow",
+                    status: "Inactive"
+                },
+                {
+                    name: "Chika Joseph",
+                    userId: "12348",
+                    role: "Sales Manager",
+                    region: "Africa, Nigeria",
+                    location: "Benin City, Edo",
+                    status: "Active"
+                },
+                {
+                    name: "Theresa Obe",
+                    userId: "12349",
+                    role: "Location Manager",
+                    region: "Africa, Nigeria",
+                    location: "Yaba, Lagos",
+                    status: "Inactive"
+                },
+                {
+                    name: "Queen Amudipe",
+                    userId: "12350",
+                    role: "Sales Manager",
+                    region: "Africa, Gabon",
+                    location: "Libreville",
+                    status: "Active"
+                },
+                {
+                    name: "John Obi",
+                    userId: "12351",
+                    role: "Location Manager",
+                    region: "Europe, Germany",
+                    location: "Hamburg",
+                    status: "Active"
+                },
+                {
+                    name: "Opeyemi Buhari",
+                    userId: "12352",
+                    role: "Sales Manager",
+                    region: "Africa, Nigeria",
+                    location: "Surulere, Lagos",
+                    status: "Active"
+                },
+                {
+                    name: "Felix Ohemu",
+                    userId: "12353",
+                    role: "Location Manager",
+                    region: "Africa, Nigeria",
+                    location: "Ikeja, Lagos",
+                    status: "Inactive"
+                },
+                {
+                    name: "Johnson Ibikunle",
+                    userId: "12354",
+                    role: "Sales Manager",
+                    region: "Africa, Nigeria",
+                    location: "Lekki, Lagos",
+                    status: "Active"
+                },
+                {
+                    name: "Oluwaseun Ayo",
+                    userId: "12355",
+                    role: "Location Manager",
+                    region: "Africa, Kenya",
+                    location: "Nairobi",
+                    status: "Active"
+                },
+                {
+                    name: "David Mensah",
+                    userId: "12356",
+                    role: "Sales Manager",
+                    region: "Africa, Ghana",
+                    location: "Kumasi",
+                    status: "Inactive"
+                },
+                {
+                    name: "Fatima Bello",
+                    userId: "12357",
+                    role: "Location Manager",
+                    region: "Africa, Nigeria",
+                    location: "Abuja",
+                    status: "Active"
+                },
+                {
+                    name: "Michael Brown",
+                    userId: "12358",
+                    role: "Sales Manager",
+                    region: "North America, USA",
+                    location: "Houston, Texas",
+                    status: "Active"
+                },
+                {
+                    name: "Sophia Laurent",
+                    userId: "12359",
+                    role: "Location Manager",
+                    region: "Europe, France",
+                    location: "Lyon",
+                    status: "Inactive"
+                },
+                {
+                    name: "Ahmed Hassan",
+                    userId: "12360",
+                    role: "Sales Manager",
+                    region: "Africa, Egypt",
+                    location: "Cairo",
+                    status: "Active"
+                },
+                {
+                    name: "Chioma Nwosu",
+                    userId: "12361",
+                    role: "Location Manager",
+                    region: "Africa, Nigeria",
+                    location: "Enugu",
+                    status: "Active"
+                },
+                {
+                    name: "Victor Adeyemi",
+                    userId: "12362",
+                    role: "Sales Manager",
+                    region: "Africa, Nigeria",
+                    location: "Ibadan",
+                    status: "Inactive"
+                },
+                {
+                    name: "Grace Okon",
+                    userId: "12363",
+                    role: "Location Manager",
+                    region: "Africa, Nigeria",
+                    location: "Uyo",
+                    status: "Active"
+                },
+                {
+                    name: "Daniel Schmidt",
+                    userId: "12364",
+                    role: "Sales Manager",
+                    region: "Europe, Germany",
+                    location: "Berlin",
+                    status: "Active"
+                },
+                {
+                    name: "Zainab Aliyu",
+                    userId: "12365",
+                    role: "Location Manager",
+                    region: "Africa, Nigeria",
+                    location: "Kano",
+                    status: "Inactive"
+                },
+                {
+                    name: "Carlos Mendes",
+                    userId: "12366",
+                    role: "Sales Manager",
+                    region: "South America, Brazil",
+                    location: "São Paulo",
+                    status: "Active"
+                }
+            ];
+
+
+            const table = $('#promotersTable').DataTable({
+                data: promoters,
+                scrollX: true,
+                paging: true,
+                searching: true,
+                info: false,          // remove “Showing 1 to…”
+                lengthChange: false,  // remove show entries dropdown
+                dom: 't',             // IMPORTANT: only render table
+                columns: [
+                    { data: "name" },
+                    { data: "userId" },
+                    { data: "role" },
+                    { data: "region" },
+                    { data: "location" },
+                    {
+                        data: "status",
+                        render: function (data) {
+                            const statusClass = data === "Active" ? "active" : "inactive";
+                            return `<span class="status ${statusClass}">${data}</span>`;
+                        }
+                    },
+                    {
+                        data: null,
+                        orderable: false,
+                        render: function () {
+                            return `<button class="action-btn">View</button>`;
+                        }
+                    }
+                ]
+            });
+
+            function updatePageIndicator() {
+                const info = table.page.info();
+                $('#pageIndicator').text(`${info.page + 1} of ${info.pages}`);
+            }
+
+            updatePageIndicator();
+
+            table.on('draw', function () {
+                updatePageIndicator();
+            });
+
+            $('#nextPage').on('click', function () {
+                table.page('next').draw('page');
+            });
+
+            $('#prevPage').on('click', function () {
+                table.page('previous').draw('page');
+            });
+
+
+
+            // Trigger search on button click
+            let searchTimeout;
+
+            $('#customSearch').on('input', function () {
+                const value = this.value;
+
+                clearTimeout(searchTimeout);
+
+                searchTimeout = setTimeout(() => {
+                    table.search(value).draw();
+                }, 250); // adjust delay if needed
+            });
+
+        });
+
+
+
+
+    </script>
+</body>
+
+</html>

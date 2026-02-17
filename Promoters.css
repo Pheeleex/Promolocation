@@ -1,0 +1,196 @@
+body {
+  font-family: Arial, sans-serif;
+  background-color: #f2f6fb;
+  margin: 0;
+  padding: 40px;
+}
+
+.page-wrapper {
+  display: flex;
+  justify-content: center;
+}
+
+.card {
+  background: white;
+  border-radius: 8px;
+  border: 1px solid #E6EDF8;
+  padding: 0; /* remove padding */
+}
+
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+.card-header h2 {
+  margin: 0;
+  color: #1b3c6b;
+}
+
+.search-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.search-input-group {
+  display: flex;
+  align-items: center;
+  background: #ffffff;
+  border: 1px solid #b6c6e3;
+  border-radius: 24px;
+  padding: 6px 14px;
+  width: 280px;
+}
+
+.search-input-group input {
+  border: none;
+  outline: none;
+  font-size: 14px;
+  width: 100%;
+  margin-left: 8px;
+}
+
+.search-icon {
+  font-size: 14px;
+  opacity: 0.6;
+}
+
+#searchBtn {
+  padding: 10px 24px;
+  border-radius: 24px;
+  border: none;
+  background: #1b3c6b;
+  color: white;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+#searchBtn:hover {
+  opacity: 0.9;
+}
+
+/* Status styling */
+.status {
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: bold;
+}
+
+.status.active {
+  background: #d4edda;
+  color: #155724;
+}
+
+.status.inactive {
+  background: #f8d7da;
+  color: #721c24;
+}
+
+.action-btn {
+  padding: 5px 12px;
+  background: #1b3c6b;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.table-wrapper {
+  overflow-x: auto;
+}
+
+/* Remove ALL default DataTables chrome */
+.dataTables_wrapper .dataTables_paginate,
+.dataTables_wrapper .dataTables_filter,
+.dataTables_wrapper .dataTables_length,
+.dataTables_wrapper .dataTables_info {
+  display: none !important;
+}
+
+/* Reset table */
+table.dataTable {
+  border-collapse: collapse !important;
+  width: 100% !important;
+  background: white !important;
+  border: none !important;
+}
+
+/* ===== HEADER ===== */
+table.dataTable thead th {
+  background-color: #CEDAEF !important;
+  color: #0E2B63 !important;
+  font-weight: 600;
+  padding: 16px 14px !important;
+  border: none !important;
+}
+
+/* Remove sorting icons */
+table.dataTable thead .sorting,
+table.dataTable thead .sorting_asc,
+table.dataTable thead .sorting_desc {
+  background-image: none !important;
+}
+
+/* ===== BODY ===== */
+table.dataTable tbody {
+  background: white !important;
+}
+
+table.dataTable tbody td {
+  padding: 16px 14px !important;
+  border-bottom: 1px solid #E6EDF8 !important;
+  color: #0E2B63;
+}
+
+/* Remove hover if Figma doesn’t show one */
+table.dataTable tbody tr:hover {
+  background-color: white !important;
+}
+
+/* Footer styling */
+.table-footer {
+  background: #CEDAEF;
+  padding: 16px;
+  border-radius: 0 0 8px 8px;
+
+  display: flex;
+  justify-content: flex-end; /* pushes everything right */
+  align-items: center;
+  gap: 20px;
+}
+
+
+.page-info {
+  font-size: 14px;
+  color: #0E2B63;
+  font-weight: 500;
+}
+
+
+.pagination-controls {
+  display: flex;
+  gap: 10px;
+}
+
+.pagination-controls button {
+  padding: 8px 16px;
+  border-radius: 20px;
+  border: none;
+  background: #1b3c6b;
+  color: white;
+  cursor: pointer;
+}
+
+.pagination-controls button:hover {
+  opacity: 0.9;
+}
+
+.page-info {
+  font-size: 14px;
+  color: #1b3c6b;
+}
