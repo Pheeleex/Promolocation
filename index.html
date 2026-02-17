@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Redirecting...</title>
+</head>
+<body>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const authUser = localStorage.getItem("authUser");
+
+        if (!authUser) {
+            window.location.href = "Auth.html"; // make sure case matches your file name
+        } else {
+            window.location.href = "Promoters.html";
+        }
+    });
+</script>
+
+</body>
+</html>
