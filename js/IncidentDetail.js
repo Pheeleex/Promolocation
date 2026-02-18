@@ -3,7 +3,7 @@
 const authUser = localStorage.getItem("authUser");
 
     if (!authUser) {
-        window.location.href = "Auth.html";
+        window.location.href = "auth.html";
     }
 
   const raw = localStorage.getItem("incidentDetail");
