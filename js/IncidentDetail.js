@@ -59,6 +59,7 @@ const authUser = localStorage.getItem("authUser");
   const frame = document.getElementById("photoFrame");
 
   if (d.image) {
+    console.log(d.image)
     const img = document.createElement("img");
     img.alt = d.name || "Incident photo";
     img.src = d.image;

@@ -310,6 +310,13 @@ input:checked + .slider:before { transform: translateX(22px); }
     transform: scale(0.98);
 }
 
+.required {
+  color: red;
+  margin-left: 4px;
+  font-weight: 600;
+}
+
+
 
 
 /* ─── RESPONSIVE ──────────────────────────────────────────── */

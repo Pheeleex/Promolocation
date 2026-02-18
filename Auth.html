@@ -122,7 +122,12 @@
         );
 
         if (!foundUser) {
-          alert("Invalid ID/Email or Password");
+          Swal.fire({
+            icon: "error",
+            title: "Login Failed",
+            text: "Invalid ID/Email or Password",
+            confirmButtonColor: "#d33",
+          });
           return;
         }
 

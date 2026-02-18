@@ -1,10 +1,9 @@
 $(document).ready(function () {
-
   const authUser = localStorage.getItem("authUser");
 
-    if (!authUser) {
-        window.location.href = "auth.html";
-    }
+  if (!authUser) {
+    window.location.href = "auth.html";
+  }
   // 1. DATA AND INITIALIZATION
   const promoters = [
     {
@@ -281,7 +280,7 @@ $(document).ready(function () {
           <div class="name-column">
             <strong class="user-name">${data}</strong>
             <span class="email-sub">${row.email}</span>
-          </div>`
+          </div>`,
       },
       { data: "userId" },
       { data: "role" },
@@ -292,7 +291,7 @@ $(document).ready(function () {
         render: (data) => {
           const color = data === "Active" ? "#22C55E" : "#EF4444";
           return `<span style="color: ${color}; font-weight: 700;">${data}</span>`;
-        }
+        },
       },
       {
         data: null,
@@ -308,9 +307,9 @@ $(document).ready(function () {
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-trash-2"><path d="M10 11v6"/><path d="M14 11v6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
               </button>
             </div>`;
-        }
-      }
-    ]
+        },
+      },
+    ],
   });
 
   // 2. SEARCH & PAGINATION
@@ -325,48 +324,87 @@ $(document).ready(function () {
     $("#nextPageTrigger, #nextPageBtn").toggle(info.page !== info.pages - 1);
   }
 
-  $("#nextPageBtn, #nextPageTrigger").on("click", () => { table.page("next").draw("page"); updateUI(); });
-  $("#prevPage, #previousPageBtn").on("click", () => { table.page("previous").draw("page"); updateUI(); });
-  
+  $("#nextPageBtn, #nextPageTrigger").on("click", () => {
+    table.page("next").draw("page");
+    updateUI();
+  });
+  $("#prevPage, #previousPageBtn").on("click", () => {
+    table.page("previous").draw("page");
+    updateUI();
+  });
+
   updateUI();
 
   // 3. EDIT LOGIC
-  $('#promotersTable').on('click', '.icon-edit', function () {
-    const rowData = table.row($(this).parents('tr')).data();
-    $('#editName').val(rowData.name);
-    $('#editEmail').val(rowData.email);
-    $('#editId').val(rowData.userId);
-    $('#editRole').val(rowData.role);
-    $('#editRegion').val(rowData.region);
-    $('#editLocation').val(rowData.location);
-    $('#editStatus').prop('checked', rowData.status === "Active");
-    $('#editModal').fadeIn(200);
+  $("#promotersTable").on("click", ".icon-edit", function () {
+    const rowData = table.row($(this).parents("tr")).data();
+
+    $("#editName").val(rowData.name);
+    $("#editEmail").val(rowData.email);
+    $("#editId").val(rowData.userId);
+    $("#editRole").val(rowData.role);
+
+    // REGION FIX
+    if ($('#editRegion option[value="' + rowData.region + '"]').length === 0) {
+      $("#editRegion").append(
+        `<option value="${rowData.region}">${rowData.region}</option>`,
+      );
+    }
+    $("#editRegion").val(rowData.region);
+
+    // LOCATION FIX
+    if (
+      $('#editLocation option[value="' + rowData.location + '"]').length === 0
+    ) {
+      $("#editLocation").append(
+        `<option value="${rowData.location}">${rowData.location}</option>`,
+      );
+    }
+    $("#editLocation").val(rowData.location);
+
+    $("#editStatus").prop("checked", rowData.status === "Active");
+
+    $("#editModal").fadeIn(200);
   });
 
-  $('.close-modal').on('click', () => $('#editModal').fadeOut(200));
+  $(".close-modal").on("click", () => $("#editModal").fadeOut(200));
 
-  $('#editPromoterForm').on('submit', function (e) {
+  $("#editPromoterForm").on("submit", function (e) {
     e.preventDefault();
-    alert('Promoter updated successfully!');
-    $('#editModal').fadeOut(200);
+    Swal.fire({
+      icon: "success",
+      title: "Promoter Updated Successfully!",
+      confirmButtonColor: "#22c55e",
+      timer: 2000,
+      showConfirmButton: false,
+    });
+    $("#editModal").fadeOut(200);
   });
 
   // 4. DELETE LOGIC
   let rowToDelete = null;
 
-  $('#promotersTable').on('click', '.icon-delete', function () {
-    rowToDelete = $(this).parents('tr');
-    $('#deleteModal').fadeIn(200);
+  $("#promotersTable").on("click", ".icon-delete", function () {
+    rowToDelete = $(this).parents("tr");
+    $("#deleteModal").fadeIn(200);
   });
 
-  $('#confirmDelete').on('click', function () {
+  $("#confirmDelete").on("click", function () {
     if (rowToDelete) {
       table.row(rowToDelete).remove().draw();
       rowToDelete = null;
-      $('#deleteModal').fadeOut(200);
+      $("#deleteModal").fadeOut(200);
       updateUI();
+
+      Swal.fire({
+        icon: "success",
+        title: "Promoter Deleted Successfully!",
+        confirmButtonColor: "#22c55e",
+        timer: 2000,
+        showConfirmButton: false,
+      });
     }
   });
 
-  $('#cancelDelete').on('click', () => $('#deleteModal').fadeOut(200));
+  $("#cancelDelete").on("click", () => $("#deleteModal").fadeOut(200));
 });
