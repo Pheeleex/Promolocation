@@ -2,7 +2,7 @@ $(document).ready(function () {
   const authUser = localStorage.getItem("authUser");
 
   if (!authUser) {
-    window.location.href = "Aßuth.html";
+    window.location.href = "Auth.html";
   }
   // 1. DATA AND INITIALIZATION
   const promoters = [

@@ -9,7 +9,7 @@ const authUser = localStorage.getItem("authUser");
   const raw = localStorage.getItem("incidentDetail");
 
   if (!raw) {
-    window.location.href = "history.html";
+    window.location.href = "IncidentHistory.html";
     return;
   }
 
