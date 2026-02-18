@@ -32,7 +32,7 @@
         <button type="submit" class="login-btn">Login</button>
       </form>
     </div>
-
+     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script>
       const loginForm = document.querySelector(".login-form");
       const userInput = document.getElementById("userid");
@@ -68,7 +68,7 @@
       const existingUser = localStorage.getItem("authUser");
 
       if (existingUser) {
-        window.location.href = "promoters.html"; // default page after login
+        window.location.href = "Promoters.html"; // default page after login
       }
 
       // -------------------------------
@@ -144,7 +144,7 @@
         );
 
         // Redirect to default page
-        window.location.href = "promoters.html";
+        window.location.href = "Promoters.html";
       });
     </script>
   </body>
