@@ -73,14 +73,20 @@ body {
     align-items: center;
     gap: 14px;
     padding: 13px 22px;
-    color: rgba(255, 255, 255, 0.75);
+    color: #fff;
     text-decoration: none;
     font-size: 14px;
     font-weight: 500;
     border-radius: 8px;
-    transition: background 0.2s ease, color 0.2s ease;
+    transition: background 0.2s, color 0.2s;
     white-space: nowrap;
 }
+
+.sidebar-nav a svg {
+  stroke: white; /* line color of icons */
+  fill: white;   /* filled parts of icons, if any */
+}
+
 
 .sidebar-nav li.active a {
     background: rgba(255, 255, 255, 0.15);

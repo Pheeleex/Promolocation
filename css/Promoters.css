@@ -74,12 +74,12 @@ body {
     align-items: center;
     gap: 14px;
     padding: 13px 22px;
-    color: rgba(255, 255, 255, 0.75);
+    color: #fff;
     text-decoration: none;
     font-size: 14px;
     font-weight: 500;
     border-radius: 8px;
-    transition: background 0.2s ease, color 0.2s ease;
+    transition: background 0.2s, color 0.2s;
     white-space: nowrap;
 }
 
@@ -92,6 +92,12 @@ body {
     background: rgba(255, 255, 255, 0.08);
     color: #fff;
 }
+
+.sidebar-nav a svg {
+  stroke: white; /* line color of icons */
+  fill: white;   /* filled parts of icons, if any */
+}
+
 
 .sidebar-nav img,
 .logout-link img {
@@ -310,7 +316,7 @@ table.dataTable tbody tr:hover td {
     transform: scale(1.1);
 }
 
-.icon-edit { color: #3B82F6; }
+.icon-edit { color: #0E2B63 }
 .icon-edit:hover { background: #eff6ff; }
 
 .icon-delete { color: #EF4444; }
