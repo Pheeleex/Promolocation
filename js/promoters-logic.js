@@ -206,7 +206,7 @@ $(document).ready(function () {
       {
         data: null,
         orderable: false,
-        className: "dt-center",
+        className: "actions-column",
         render: function () {
           return `
             <div class="action-icons">

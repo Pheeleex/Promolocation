@@ -262,6 +262,16 @@ table.dataTable tbody td {
     vertical-align: middle;
 }
 
+table.dataTable thead th.actions-column,
+table.dataTable tbody td.actions-column {
+    text-align: center !important;
+}
+
+table.dataTable thead th.actions-column::before,
+table.dataTable thead th.actions-column::after {
+    display: none !important;
+}
+
 table.dataTable tbody tr:last-child td {
     border-bottom: none !important;
 }
@@ -298,6 +308,8 @@ table.dataTable tbody tr:hover td {
     display: flex;
     gap: 10px;
     align-items: center;
+    justify-content: center;
+    width: 100%;
 }
 
 .icon-btn {
