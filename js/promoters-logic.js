@@ -10,261 +10,174 @@ $(document).ready(function () {
       name: "Emmanuel Raphael",
       email: "Emmy@gmail.com",
       userId: "12345",
-      role: "Sales Manager",
-      region: "Africa, Nigeria",
-      location: "Ikeja, Lagos",
       status: "Active",
     },
     {
       name: "Maggy Edozie",
       email: "MaggyEdozie@gmail.com",
       userId: "12346",
-      role: "Location Manager",
-      region: "Africa, Ghana",
-      location: "Tema, Accra",
       status: "Active",
     },
     {
       name: "Habeeb Siaka",
       email: "HabeebSiaka@gmail.com",
       userId: "12347",
-      role: "Sales Manager",
-      region: "Europe, Russia",
-      location: "Khimki, Moscow",
       status: "Active",
     },
     {
       name: "Omololu Jumat",
       email: "OmololuJumat@gmail.com",
       userId: "12348",
-      role: "Location Manager",
-      region: "Europe, Russia",
-      location: "Korolyov, Moscow",
       status: "Inactive",
     },
     {
       name: "Amara Diallo",
       email: "AmaraDiallo@gmail.com",
       userId: "12349",
-      role: "Sales Manager",
-      region: "Africa, Senegal",
-      location: "Dakar, Dakar",
       status: "Active",
     },
     {
       name: "Chidi Okonkwo",
       email: "ChidiOkonkwo@gmail.com",
       userId: "12350",
-      role: "Regional Director",
-      region: "Africa, Nigeria",
-      location: "Victoria Island, Lagos",
       status: "Active",
     },
     {
       name: "Fatima Al-Rashid",
       email: "FatimaAlRashid@gmail.com",
       userId: "12351",
-      role: "Location Manager",
-      region: "Middle East, UAE",
-      location: "Deira, Dubai",
       status: "Active",
     },
     {
       name: "Yuki Tanaka",
       email: "YukiTanaka@gmail.com",
       userId: "12352",
-      role: "Sales Manager",
-      region: "Asia, Japan",
-      location: "Shinjuku, Tokyo",
       status: "Inactive",
     },
     {
       name: "Priya Nambiar",
       email: "PriyaNambiar@gmail.com",
       userId: "12353",
-      role: "Regional Director",
-      region: "Asia, India",
-      location: "Bandra, Mumbai",
       status: "Active",
     },
     {
       name: "Carlos Mendes",
       email: "CarlosMendes@gmail.com",
       userId: "12354",
-      role: "Sales Manager",
-      region: "South America, Brazil",
-      location: "Copacabana, Rio de Janeiro",
       status: "Active",
     },
     {
       name: "Ingrid Solberg",
       email: "IngridSolberg@gmail.com",
       userId: "12355",
-      role: "Location Manager",
-      region: "Europe, Norway",
-      location: "Grünerløkka, Oslo",
       status: "Pending",
     },
     {
       name: "Kwame Asante",
       email: "KwameAsante@gmail.com",
       userId: "12356",
-      role: "Sales Manager",
-      region: "Africa, Ghana",
-      location: "Kumasi, Ashanti",
       status: "Active",
     },
     {
       name: "Sofia Esposito",
       email: "SofiaEsposito@gmail.com",
       userId: "12357",
-      role: "Regional Director",
-      region: "Europe, Italy",
-      location: "Trastevere, Rome",
       status: "Active",
     },
     {
       name: "Dmitri Volkov",
       email: "DmitriVolkov@gmail.com",
       userId: "12358",
-      role: "Location Manager",
-      region: "Europe, Russia",
-      location: "Saint Petersburg, Northwest",
       status: "Inactive",
     },
     {
       name: "Aisha Mwangi",
       email: "AishaMwangi@gmail.com",
       userId: "12359",
-      role: "Sales Manager",
-      region: "Africa, Kenya",
-      location: "Westlands, Nairobi",
       status: "Active",
     },
     {
       name: "Liam O'Brien",
       email: "LiamOBrien@gmail.com",
       userId: "12360",
-      role: "Sales Manager",
-      region: "Europe, Ireland",
-      location: "Ballsbridge, Dublin",
       status: "Active",
     },
     {
       name: "Mei Ling Chen",
       email: "MeiLingChen@gmail.com",
       userId: "12361",
-      role: "Regional Director",
-      region: "Asia, China",
-      location: "Pudong, Shanghai",
       status: "Active",
     },
     {
       name: "Tariq Hassan",
       email: "TariqHassan@gmail.com",
       userId: "12362",
-      role: "Location Manager",
-      region: "Middle East, Egypt",
-      location: "Zamalek, Cairo",
       status: "Pending",
     },
     {
       name: "Valentina Cruz",
       email: "ValentinaCruz@gmail.com",
       userId: "12363",
-      role: "Sales Manager",
-      region: "South America, Colombia",
-      location: "El Poblado, Medellín",
       status: "Active",
     },
     {
       name: "Oluwaseun Adeyemi",
       email: "OluwaseunAdeyemi@gmail.com",
       userId: "12364",
-      role: "Regional Director",
-      region: "Africa, Nigeria",
-      location: "Lekki, Lagos",
       status: "Active",
     },
     {
       name: "Nadia Petrov",
       email: "NadiaPetrov@gmail.com",
       userId: "12365",
-      role: "Location Manager",
-      region: "Europe, Ukraine",
-      location: "Pechersk, Kyiv",
       status: "Inactive",
     },
     {
       name: "Jae-won Park",
       email: "JaewonPark@gmail.com",
       userId: "12366",
-      role: "Sales Manager",
-      region: "Asia, South Korea",
-      location: "Gangnam, Seoul",
       status: "Active",
     },
     {
       name: "Amina Touré",
       email: "AminaToure@gmail.com",
       userId: "12367",
-      role: "Location Manager",
-      region: "Africa, Ivory Coast",
-      location: "Plateau, Abidjan",
       status: "Active",
     },
     {
       name: "Rafael Oliveira",
       email: "RafaelOliveira@gmail.com",
       userId: "12368",
-      role: "Regional Director",
-      region: "South America, Argentina",
-      location: "Palermo, Buenos Aires",
       status: "Pending",
     },
     {
       name: "Zara Osei",
       email: "ZaraOsei@gmail.com",
       userId: "12369",
-      role: "Sales Manager",
-      region: "Africa, Ghana",
-      location: "Osu, Accra",
       status: "Active",
     },
     {
       name: "Henrik Lindqvist",
       email: "HenrikLindqvist@gmail.com",
       userId: "12370",
-      role: "Location Manager",
-      region: "Europe, Sweden",
-      location: "Södermalm, Stockholm",
       status: "Active",
     },
     {
       name: "Blessing Eze",
       email: "BlessingEze@gmail.com",
       userId: "12371",
-      role: "Regional Director",
-      region: "Africa, Nigeria",
-      location: "GRA, Port Harcourt",
       status: "Active",
     },
     {
       name: "Layla Al-Farsi",
       email: "LaylaAlFarsi@gmail.com",
       userId: "12372",
-      role: "Sales Manager",
-      region: "Middle East, Oman",
-      location: "Qurum, Muscat",
       status: "Inactive",
     },
     {
       name: "Tomás Novák",
       email: "TomasNovak@gmail.com",
       userId: "12373",
-      role: "Location Manager",
-      region: "Europe, Czech Republic",
-      location: "Vinohrady, Prague",
       status: "Active",
     },
   ];
@@ -283,9 +196,6 @@ $(document).ready(function () {
           </div>`,
       },
       { data: "userId" },
-      { data: "role" },
-      { data: "region" },
-      { data: "location" },
       {
         data: "status",
         render: (data) => {
@@ -317,22 +227,79 @@ $(document).ready(function () {
     table.search(this.value).draw();
   });
 
-  function updateUI() {
-    const info = table.page.info();
-    $("#pageIndicator").text(`${info.page + 1} of ${info.pages}`);
-    $("#prevPage, #previousPageBtn").toggle(info.page !== 0);
-    $("#nextPageTrigger, #nextPageBtn").toggle(info.page !== info.pages - 1);
+  function getVisiblePages(currentPage, totalPages) {
+    if (totalPages <= 5) {
+      return Array.from({ length: totalPages }, (_, index) => index);
+    }
+
+    if (currentPage <= 2) {
+      return [0, 1, 2, 3, "...", totalPages - 1];
+    }
+
+    if (currentPage >= totalPages - 3) {
+      return [0, "...", totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1];
+    }
+
+    return [0, "...", currentPage - 1, currentPage, currentPage + 1, "...", totalPages - 1];
   }
 
-  $("#nextPageBtn, #nextPageTrigger").on("click", () => {
-    table.page("next").draw("page");
-    updateUI();
-  });
-  $("#prevPage, #previousPageBtn").on("click", () => {
-    table.page("previous").draw("page");
-    updateUI();
+  function updateUI() {
+    const info = table.page.info();
+    const totalPages = Math.max(info.pages, 1);
+    const currentPage = Math.min(info.page, totalPages - 1);
+    const visiblePages = getVisiblePages(currentPage, totalPages);
+    const paginationMarkup = visiblePages
+      .map((page) => {
+        if (page === "...") {
+          return '<span class="pagination-ellipsis" aria-hidden="true">...</span>';
+        }
+
+        const isActive = page === currentPage;
+        return `
+          <button
+            type="button"
+            class="pagination-button${isActive ? " is-active" : ""}"
+            data-page="${page}"
+            ${isActive ? 'aria-current="page"' : ""}
+          >
+            ${page + 1}
+          </button>`;
+      })
+      .join("");
+
+    $("#paginationNav").html(`
+      <button
+        type="button"
+        class="pagination-arrow"
+        data-direction="previous"
+        aria-label="Previous page"
+        ${currentPage === 0 ? "disabled" : ""}
+      >
+        &lt;
+      </button>
+      <div class="pagination-pages">${paginationMarkup}</div>
+      <button
+        type="button"
+        class="pagination-arrow"
+        data-direction="next"
+        aria-label="Next page"
+        ${currentPage >= totalPages - 1 ? "disabled" : ""}
+      >
+        &gt;
+      </button>
+    `);
+  }
+
+  $("#paginationNav").on("click", "[data-page]", function () {
+    table.page(Number($(this).data("page"))).draw("page");
   });
 
+  $("#paginationNav").on("click", "[data-direction]", function () {
+    const direction = $(this).data("direction");
+    table.page(direction).draw("page");
+  });
+
+  table.on("draw", updateUI);
   updateUI();
 
   // 3. EDIT LOGIC
@@ -342,25 +309,6 @@ $(document).ready(function () {
     $("#editName").val(rowData.name);
     $("#editEmail").val(rowData.email);
     $("#editId").val(rowData.userId);
-    $("#editRole").val(rowData.role);
-
-    // REGION FIX
-    if ($('#editRegion option[value="' + rowData.region + '"]').length === 0) {
-      $("#editRegion").append(
-        `<option value="${rowData.region}">${rowData.region}</option>`,
-      );
-    }
-    $("#editRegion").val(rowData.region);
-
-    // LOCATION FIX
-    if (
-      $('#editLocation option[value="' + rowData.location + '"]').length === 0
-    ) {
-      $("#editLocation").append(
-        `<option value="${rowData.location}">${rowData.location}</option>`,
-      );
-    }
-    $("#editLocation").val(rowData.location);
 
     $("#editStatus").prop("checked", rowData.status === "Active");
 

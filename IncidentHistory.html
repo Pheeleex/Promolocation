@@ -78,7 +78,6 @@
                   <th>Name</th>
                   <th>User ID</th>
                   <th>Issue</th>
-                  <th>Role</th>
                   <th>Location</th>
                   <th>Date</th>
                   <th>Status</th>
@@ -90,15 +89,11 @@
           </div>
 
           <div class="card-footer">
-            <div class="pagination-pill">
-              <span id="prevPage" class="arrow">&lt;</span>
-              <span id="pageIndicator">1 of 5</span>
-              <span id="nextPageTrigger" class="arrow">&gt;</span>
-            </div>
-            <button id="nextPageBtn" class="next-btn">Next Page &gt;</button>
-            <button id="previousPageBtn" class="next-btn">
-              &lt; Previous Page
-            </button>
+            <nav
+              id="paginationNav"
+              class="pagination-nav"
+              aria-label="Incident history table pagination"
+            ></nav>
           </div>
         </div>
       </main>

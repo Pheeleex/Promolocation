@@ -91,9 +91,6 @@
                 <tr>
                   <th>Name</th>
                   <th>User ID</th>
-                  <th>Role</th>
-                  <th>Assigned Region</th>
-                  <th>Location</th>
                   <th>Status</th>
                   <th>Actions</th>
                 </tr>
@@ -103,15 +100,11 @@
           </div>
 
           <div class="card-footer">
-            <div class="pagination-pill">
-              <span id="prevPage" class="arrow">&lt;</span>
-              <span id="pageIndicator">1 of 5</span>
-              <span id="nextPageTrigger" class="arrow">&gt;</span>
-            </div>
-            <button id="nextPageBtn" class="next-btn">Next Page &gt;</button>
-            <button id="previousPageBtn" class="next-btn">
-              &lt; Previous Page
-            </button>
+            <nav
+              id="paginationNav"
+              class="pagination-nav"
+              aria-label="Promoters table pagination"
+            ></nav>
           </div>
         </div>
       </main>
@@ -136,28 +129,6 @@
           <div class="form-group">
             <label>Promoter’s ID</label>
             <input type="text" id="editId" name="userId" readonly />
-          </div>
-          <div class="form-group">
-            <label>Role</label>
-            <select id="editRole" name="role">
-              <option value="Brand Ambassador">Brand Ambassador</option>
-              <option value="Sales Manager">Sales Manager</option>
-              <option value="Location Manager">Location Manager</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label>Assigned Region</label>
-            <select id="editRegion" name="region">
-              <option value="Europe, Russia">Europe, Russia</option>
-              <option value="Africa, Nigeria">Africa, Nigeria</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label>Location</label>
-            <select id="editLocation" name="location">
-              <option value="koroloy , Moscow">koroloy , Moscow</option>
-              <option value="Ikeja, Lagos">Ikeja, Lagos</option>
-            </select>
           </div>
           <div class="status-toggle">
             <span>Deactivate</span>
