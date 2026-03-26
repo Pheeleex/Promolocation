@@ -43,7 +43,6 @@ const authUser = localStorage.getItem("authUser");
   document.getElementById("detailIssue").textContent       = d.issue       || "—";
   document.getElementById("detailDescription").textContent = d.description || "—";
   document.getElementById("detailDate").textContent        = d.date ? formatDate(d.date) : "—";
-  document.getElementById("detailLocation").textContent    = d.location    || "—";
 
   // ── Status: text + colored dot ──────────────────────────
   const statusText = d.status || "—";

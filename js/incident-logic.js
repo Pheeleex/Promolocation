@@ -10,7 +10,6 @@ $(document).ready(function () {
       userId: "PRM001",
       image: "assets/test1.png",
       issue: "Late Arrival",
-      location: "Berlin",
       description: "Arrived 2 hours late to assigned promotional duty.",
       date: "2026-02-10",
       status: "Pending",
@@ -19,7 +18,6 @@ $(document).ready(function () {
       userId: "PRM002",
       image: "assets/test2.png",
       issue: "Uniform Violation",
-      location: "Munich",
       description: "Not dressed according to company uniform policy.",
       date: "2026-02-11",
       status: "In Progress",
@@ -28,7 +26,6 @@ $(document).ready(function () {
       userId: "PRM003",
       image:"assets/test1.png",
       issue: "Customer Complaint",
-      location: "Hamburg",
       description: "Customer reported unprofessional behavior during engagement.",
       date: "2026-02-12",
       status: "Resolved",
@@ -37,7 +34,6 @@ $(document).ready(function () {
       userId: "PRM004",
       image: "assets/test3.png",
       issue: "Absenteeism",
-      location: "Cologne",
       description: "Absent from assigned duty without prior notice.",
       date: "2026-02-13",
       status: "Closed",
@@ -51,7 +47,6 @@ $(document).ready(function () {
     columns: [
       { data: "userId" },
       { data: "issue" },
-      { data: "location" },
       {
         data: "date",
         render: function (data, type) {
