@@ -7,9 +7,7 @@ $(document).ready(function () {
 
   const incidentHistory = [
     {
-      name: "John Doe",
       userId: "PRM001",
-      email: "johndoe@email.com",
       image: "assets/test1.png",
       issue: "Late Arrival",
       location: "Berlin",
@@ -18,9 +16,7 @@ $(document).ready(function () {
       status: "Pending",
     },
     {
-      name: "Jane Smith",
       userId: "PRM002",
-      email: "janesmith@email.com",
       image: "assets/test2.png",
       issue: "Uniform Violation",
       location: "Munich",
@@ -29,9 +25,7 @@ $(document).ready(function () {
       status: "In Progress",
     },
     {
-      name: "Michael Brown",
       userId: "PRM003",
-      email: "michaelbrown@email.com",
       image:"assets/test1.png",
       issue: "Customer Complaint",
       location: "Hamburg",
@@ -40,9 +34,7 @@ $(document).ready(function () {
       status: "Resolved",
     },
     {
-      name: "Sarah Wilson",
       userId: "PRM004",
-      email: "sarahwilson@email.com",
       image: "assets/test3.png",
       issue: "Absenteeism",
       location: "Cologne",
@@ -57,14 +49,6 @@ $(document).ready(function () {
     dom: "t",
     pageLength: 10,
     columns: [
-      {
-        data: "name",
-        render: (data, type, row) => `
-          <div class="name-column">
-            <strong class="user-name">${data}</strong>
-            <span class="email-sub">${row.email}</span>
-          </div>`,
-      },
       { data: "userId" },
       { data: "issue" },
       { data: "location" },

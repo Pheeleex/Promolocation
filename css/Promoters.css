@@ -254,6 +254,68 @@ table.dataTable thead th {
     white-space: nowrap;
 }
 
+table.dataTable thead th.sortable-header.sorting,
+table.dataTable thead th.sortable-header.sorting_asc,
+table.dataTable thead th.sortable-header.sorting_desc {
+    padding-right: 16px !important;
+}
+
+table.dataTable thead th.sortable-header::before,
+table.dataTable thead th.sortable-header::after {
+    display: none !important;
+    content: none !important;
+}
+
+table.dataTable thead th.sortable-header .sortable-label {
+    display: inline-flex;
+    align-items: center;
+    position: relative;
+    padding-right: 18px;
+}
+
+table.dataTable thead th.sortable-header .sortable-label::before,
+table.dataTable thead th.sortable-header .sortable-label::after {
+    content: "";
+    position: absolute;
+    right: 0;
+    width: 0;
+    height: 0;
+    border-left: 5px solid transparent;
+    border-right: 5px solid transparent;
+    opacity: 0.4;
+    transition: opacity 0.2s ease;
+}
+
+table.dataTable thead th.sortable-header .sortable-label::before {
+    top: 50%;
+    transform: translateY(-9px);
+    border-bottom: 8px solid #9ab6de;
+}
+
+table.dataTable thead th.sortable-header .sortable-label::after {
+    top: 50%;
+    transform: translateY(1px);
+    border-top: 8px solid #9ab6de;
+}
+
+table.dataTable thead th.sortable-header.sorting_asc .sortable-label::before {
+    opacity: 1;
+    border-bottom-color: var(--navy);
+}
+
+table.dataTable thead th.sortable-header.sorting_asc .sortable-label::after {
+    opacity: 0.2;
+}
+
+table.dataTable thead th.sortable-header.sorting_desc .sortable-label::before {
+    opacity: 0.2;
+}
+
+table.dataTable thead th.sortable-header.sorting_desc .sortable-label::after {
+    opacity: 1;
+    border-top-color: var(--navy);
+}
+
 table.dataTable tbody td {
     border-bottom: 1px solid #EDF2F7 !important;
     padding: 12px 16px !important;
@@ -279,28 +341,6 @@ table.dataTable tbody tr:last-child td {
 table.dataTable tbody tr:hover td {
     background-color: #f0f7ff;
     transition: background 0.15s ease;
-}
-
-/* ─── NAME CELL ───────────────────────────────────────────── */
-.name-column {
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    line-height: 1.5;
-    min-width: 160px;
-}
-
-.user-name {
-    color: var(--navy);
-    font-size: 13px;
-    font-weight: 600;
-}
-
-.email-sub {
-    display: block;
-    font-size: 11px;
-    color: var(--text-gray);
-    font-weight: 400;
 }
 
 /* ─── ACTION ICONS ────────────────────────────────────────── */

@@ -39,8 +39,6 @@ const authUser = localStorage.getItem("authUser");
   };
 
   // ── Populate text fields ────────────────────────────────
-  document.getElementById("detailName").textContent        = d.name        || "—";
-  document.getElementById("detailEmail").textContent       = d.email       || "—";
   document.getElementById("detailUserId").textContent      = d.userId      || "—";
   document.getElementById("detailIssue").textContent       = d.issue       || "—";
   document.getElementById("detailDescription").textContent = d.description || "—";
@@ -58,9 +56,8 @@ const authUser = localStorage.getItem("authUser");
   const frame = document.getElementById("photoFrame");
 
   if (d.image) {
-    console.log(d.image)
     const img = document.createElement("img");
-    img.alt = d.name || "Incident photo";
+    img.alt = d.userId ? `Incident photo for ${d.userId}` : "Incident photo";
     img.src = d.image;
     img.onerror = () => {
       frame.removeChild(img);

@@ -20,8 +20,8 @@
 
       <form class="login-form">
         <div class="input-group">
-          <label for="userid">Enter Your User ID/Email</label>
-          <input type="text" id="userid" placeholder="Email..." />
+          <label for="userid">Enter Your User ID</label>
+          <input type="text" id="userid" placeholder="User ID..." />
         </div>
 
         <div class="input-group">
@@ -44,20 +44,14 @@
       const users = [
         {
           id: "12345",
-          email: "admin1@email.com",
-          name: "Admin One",
           password: "password",
         },
         {
           id: "67890",
-          email: "admin2@email.com",
-          name: "Admin Two",
           password: "password",
         },
         {
           id: "54321",
-          email: "manager@email.com",
-          name: "Manager",
           password: "password",
         },
       ];
@@ -116,16 +110,14 @@
         // Check if user exists
         // -------------------------------
         const foundUser = users.find(
-          (user) =>
-            (user.id === userValue || user.email === userValue) &&
-            user.password === passwordValue,
+          (user) => user.id === userValue && user.password === passwordValue,
         );
 
         if (!foundUser) {
           Swal.fire({
             icon: "error",
             title: "Login Failed",
-            text: "Invalid ID/Email or Password",
+            text: "Invalid User ID or Password",
             confirmButtonColor: "#d33",
           });
           return;
@@ -138,8 +130,6 @@
           "authUser",
           JSON.stringify({
             id: foundUser.id,
-            email: foundUser.email,
-            name: foundUser.name,
           }),
         );
 

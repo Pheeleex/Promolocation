@@ -7,176 +7,118 @@ $(document).ready(function () {
   // 1. DATA AND INITIALIZATION
   const promoters = [
     {
-      name: "Emmanuel Raphael",
-      email: "Emmy@gmail.com",
       userId: "12345",
       status: "Active",
     },
     {
-      name: "Maggy Edozie",
-      email: "MaggyEdozie@gmail.com",
       userId: "12346",
       status: "Active",
     },
     {
-      name: "Habeeb Siaka",
-      email: "HabeebSiaka@gmail.com",
       userId: "12347",
       status: "Active",
     },
     {
-      name: "Omololu Jumat",
-      email: "OmololuJumat@gmail.com",
       userId: "12348",
       status: "Inactive",
     },
     {
-      name: "Amara Diallo",
-      email: "AmaraDiallo@gmail.com",
       userId: "12349",
       status: "Active",
     },
     {
-      name: "Chidi Okonkwo",
-      email: "ChidiOkonkwo@gmail.com",
       userId: "12350",
       status: "Active",
     },
     {
-      name: "Fatima Al-Rashid",
-      email: "FatimaAlRashid@gmail.com",
       userId: "12351",
       status: "Active",
     },
     {
-      name: "Yuki Tanaka",
-      email: "YukiTanaka@gmail.com",
       userId: "12352",
       status: "Inactive",
     },
     {
-      name: "Priya Nambiar",
-      email: "PriyaNambiar@gmail.com",
       userId: "12353",
       status: "Active",
     },
     {
-      name: "Carlos Mendes",
-      email: "CarlosMendes@gmail.com",
       userId: "12354",
       status: "Active",
     },
     {
-      name: "Ingrid Solberg",
-      email: "IngridSolberg@gmail.com",
       userId: "12355",
       status: "Pending",
     },
     {
-      name: "Kwame Asante",
-      email: "KwameAsante@gmail.com",
       userId: "12356",
       status: "Active",
     },
     {
-      name: "Sofia Esposito",
-      email: "SofiaEsposito@gmail.com",
       userId: "12357",
       status: "Active",
     },
     {
-      name: "Dmitri Volkov",
-      email: "DmitriVolkov@gmail.com",
       userId: "12358",
       status: "Inactive",
     },
     {
-      name: "Aisha Mwangi",
-      email: "AishaMwangi@gmail.com",
       userId: "12359",
       status: "Active",
     },
     {
-      name: "Liam O'Brien",
-      email: "LiamOBrien@gmail.com",
       userId: "12360",
       status: "Active",
     },
     {
-      name: "Mei Ling Chen",
-      email: "MeiLingChen@gmail.com",
       userId: "12361",
       status: "Active",
     },
     {
-      name: "Tariq Hassan",
-      email: "TariqHassan@gmail.com",
       userId: "12362",
       status: "Pending",
     },
     {
-      name: "Valentina Cruz",
-      email: "ValentinaCruz@gmail.com",
       userId: "12363",
       status: "Active",
     },
     {
-      name: "Oluwaseun Adeyemi",
-      email: "OluwaseunAdeyemi@gmail.com",
       userId: "12364",
       status: "Active",
     },
     {
-      name: "Nadia Petrov",
-      email: "NadiaPetrov@gmail.com",
       userId: "12365",
       status: "Inactive",
     },
     {
-      name: "Jae-won Park",
-      email: "JaewonPark@gmail.com",
       userId: "12366",
       status: "Active",
     },
     {
-      name: "Amina Touré",
-      email: "AminaToure@gmail.com",
       userId: "12367",
       status: "Active",
     },
     {
-      name: "Rafael Oliveira",
-      email: "RafaelOliveira@gmail.com",
       userId: "12368",
       status: "Pending",
     },
     {
-      name: "Zara Osei",
-      email: "ZaraOsei@gmail.com",
       userId: "12369",
       status: "Active",
     },
     {
-      name: "Henrik Lindqvist",
-      email: "HenrikLindqvist@gmail.com",
       userId: "12370",
       status: "Active",
     },
     {
-      name: "Blessing Eze",
-      email: "BlessingEze@gmail.com",
       userId: "12371",
       status: "Active",
     },
     {
-      name: "Layla Al-Farsi",
-      email: "LaylaAlFarsi@gmail.com",
       userId: "12372",
       status: "Inactive",
     },
     {
-      name: "Tomás Novák",
-      email: "TomasNovak@gmail.com",
       userId: "12373",
       status: "Active",
     },
@@ -187,14 +129,6 @@ $(document).ready(function () {
     dom: "t",
     pageLength: 10,
     columns: [
-      {
-        data: "name",
-        render: (data, type, row) => `
-          <div class="name-column">
-            <strong class="user-name">${data}</strong>
-            <span class="email-sub">${row.email}</span>
-          </div>`,
-      },
       { data: "userId" },
       {
         data: "status",
@@ -306,8 +240,6 @@ $(document).ready(function () {
   $("#promotersTable").on("click", ".icon-edit", function () {
     const rowData = table.row($(this).parents("tr")).data();
 
-    $("#editName").val(rowData.name);
-    $("#editEmail").val(rowData.email);
     $("#editId").val(rowData.userId);
 
     $("#editStatus").prop("checked", rowData.status === "Active");
