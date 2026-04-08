@@ -33,10 +33,14 @@ export type IncidentStatus =
   | "Pending"
   | "In Progress"
   | "Resolved"
-  | "Deny"
+  | "Not Resolved"
   | "Closed";
 
-export type EditableIncidentStatus = "In Progress" | "Deny" | "Resolved";
+export type EditableIncidentStatus =
+  | "In Progress"
+  | "Resolved"
+  | "Not Resolved"
+  | "Closed";
 
 export type Incident = {
   id: string;

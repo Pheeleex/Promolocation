@@ -64,12 +64,10 @@ export function getPromoterStatusColor(status) {
 export function getIncidentStatusColor(status) {
   const statusColors = {
     Resolved: "#16A34A",
-    Closed: "#DC2626",
+    Closed: "#64748B",
     "In Progress": "#2563EB",
     Pending: "#EAB308",
-    Resolved: "#16A34A",
-    Deny: "#DC2626",
-    Denied: "#DC2626",
+    "Not Resolved": "#DC2626",
     Active: "#22C55E",
     Inactive: "#94A3B8",
   };

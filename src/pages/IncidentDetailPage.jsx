@@ -10,10 +10,81 @@ import {
   useUpdateIncidentStatus,
 } from "../hooks/use-incidents";
 import { useAuthStore } from "../store/auth-store";
+import { isSpecialAdminUser } from "../utils/authAccess";
 import { assetPath } from "../utils/assetPath";
 import { formatLongDate, getIncidentStatusColor } from "../utils/formatters";
 
-const INCIDENT_STATUS_OPTIONS = ["Pending", "In Progress", "Resolved"];
+const ADMIN_INCIDENT_ACTIONS = {
+  Pending: ["In Progress", "Resolved"],
+  "In Progress": ["Resolved"],
+  "Not Resolved": ["In Progress", "Resolved"],
+};
+
+const SPECIAL_ADMIN_INCIDENT_ACTIONS = {
+  Resolved: ["Not Resolved", "Closed"],
+};
+
+function getAvailableIncidentStatusOptions(currentStatus, isSpecialAdmin) {
+  if (!currentStatus) {
+    return [];
+  }
+
+  const statusOptions = isSpecialAdmin
+    ? SPECIAL_ADMIN_INCIDENT_ACTIONS
+    : ADMIN_INCIDENT_ACTIONS;
+
+  return statusOptions[currentStatus] || [];
+}
+
+function getIncidentActionHelperCopy(currentStatus, isSpecialAdmin) {
+  if (isSpecialAdmin) {
+    switch (currentStatus) {
+      case "Pending":
+        return "This incident is pending admin review. You can act after the admin resolves it.";
+      case "In Progress":
+        return "An admin is currently working on this incident. You cannot update it right now.";
+      case "Resolved":
+        return "Review the admin resolution and either confirm it as closed or return it as not resolved.";
+      case "Not Resolved":
+        return "An admin must resolve this incident again before you can take another action.";
+      case "Closed":
+        return "This incident has been closed and no further action is available.";
+      default:
+        return "Review the current incident status before taking action.";
+    }
+  }
+
+  switch (currentStatus) {
+    case "Pending":
+      return "This incident has just been submitted. Move it into progress or resolve it.";
+    case "In Progress":
+      return "Continue working the incident or mark it resolved when the issue has been handled.";
+    case "Resolved":
+      return "A special admin must now review this resolution before the incident can be closed.";
+    case "Not Resolved":
+      return "The resolution was rejected. Move the incident back to In Progress or resolve it again.";
+    case "Closed":
+      return "This incident has been closed and can no longer be updated.";
+    default:
+      return "Select the next status for this incident.";
+  }
+}
+
+function formatStatusOptionsList(statusOptions) {
+  if (!statusOptions.length) {
+    return "";
+  }
+
+  if (statusOptions.length === 1) {
+    return statusOptions[0];
+  }
+
+  if (statusOptions.length === 2) {
+    return `${statusOptions[0]} or ${statusOptions[1]}`;
+  }
+
+  return `${statusOptions.slice(0, -1).join(", ")}, or ${statusOptions[statusOptions.length - 1]}`;
+}
 
 function BackArrow() {
   return (
@@ -46,12 +117,24 @@ export default function IncidentDetailPage() {
   const { data: incidents = [], isLoading, isError, error } = useIncidents();
   const { mutateAsync: updateIncidentStatus, isPending: isUpdatingIncident } =
     useUpdateIncidentStatus();
-  const authUserId = useAuthStore((state) => state.user?.user_id);
+  const authUser = useAuthStore((state) => state.user);
+  const authUserId = authUser?.user_id;
   const queryClient = useQueryClient();
   const navigate = useNavigate();
 
   const incident = incidents.find((item) => item.id === incidentId);
   const statusColor = getIncidentStatusColor(incident?.status);
+  const isSpecialAdmin = isSpecialAdminUser(authUser);
+  const availableStatusOptions = getAvailableIncidentStatusOptions(
+    incident?.status,
+    isSpecialAdmin,
+  );
+  const canUpdateIncident = availableStatusOptions.length > 0;
+  const incidentActionHelperCopy = getIncidentActionHelperCopy(
+    incident?.status,
+    isSpecialAdmin,
+  );
+  const incidentActionTitle = isSpecialAdmin ? "Incident Review" : "Incident Action";
 
   useEffect(() => {
     setHasImageError(false);
@@ -64,11 +147,9 @@ export default function IncidentDetailPage() {
       return;
     }
 
-    setSelectedStatus(
-      INCIDENT_STATUS_OPTIONS.includes(incident.status) ? incident.status : "",
-    );
+    setSelectedStatus("");
     setAdminNote(incident.adminNote || "");
-  }, [incident]);
+  }, [incident, isSpecialAdmin]);
 
   useEffect(() => {
     if (!isLightboxOpen) {
@@ -154,11 +235,21 @@ export default function IncidentDetailPage() {
   const handleStatusUpdate = async (event) => {
     event.preventDefault();
 
+    if (!canUpdateIncident) {
+      await Swal.fire({
+        icon: "info",
+        title: "No Action Available",
+        text: incidentActionHelperCopy,
+        confirmButtonColor: "#0E2B63",
+      });
+      return;
+    }
+
     if (!selectedStatus) {
       Swal.fire({
         icon: "error",
         title: "Select a Status",
-        text: "Choose Pending, In Progress, or Resolved before saving.",
+        text: `Choose ${formatStatusOptionsList(availableStatusOptions)} before saving.`,
         confirmButtonColor: "#d33",
       });
       return;
@@ -302,7 +393,8 @@ export default function IncidentDetailPage() {
           <hr className="section-divider" />
 
           <div className="description-section">
-            <h3 className="card-section-title">Admin Action:</h3>
+            <h3 className="card-section-title">{incidentActionTitle}:</h3>
+            <p style={{ marginBottom: "16px", color: "#64748b" }}>{incidentActionHelperCopy}</p>
             <form className="incident-action-form" onSubmit={handleStatusUpdate}>
               <div className="incident-action-grid">
                 <div className="incident-input-group">
@@ -310,11 +402,13 @@ export default function IncidentDetailPage() {
                   <select
                     id="incidentStatus"
                     value={selectedStatus}
-                    disabled={isUpdatingIncident}
+                    disabled={isUpdatingIncident || !canUpdateIncident}
                     onChange={(event) => setSelectedStatus(event.target.value)}
                   >
-                    <option value="">Select status</option>
-                    {INCIDENT_STATUS_OPTIONS.map((statusOption) => (
+                    <option value="">
+                      {canUpdateIncident ? "Select status" : "No actions available"}
+                    </option>
+                    {availableStatusOptions.map((statusOption) => (
                       <option key={statusOption} value={statusOption}>
                         {statusOption}
                       </option>
@@ -327,9 +421,13 @@ export default function IncidentDetailPage() {
                   <textarea
                     id="adminComment"
                     rows="5"
-                    placeholder="Add an admin comment..."
+                    placeholder={
+                      canUpdateIncident
+                        ? "Add a comment..."
+                        : "No update is available for the current incident state."
+                    }
                     value={adminNote}
-                    disabled={isUpdatingIncident}
+                    disabled={isUpdatingIncident || !canUpdateIncident}
                     onChange={(event) => setAdminNote(event.target.value)}
                   />
                 </div>
@@ -339,9 +437,13 @@ export default function IncidentDetailPage() {
                 <button
                   type="submit"
                   className="resolve-btn"
-                  disabled={isUpdatingIncident || !selectedStatus}
+                  disabled={isUpdatingIncident || !canUpdateIncident || !selectedStatus}
                 >
-                  {isUpdatingIncident ? "Saving..." : "Save Update"}
+                  {isUpdatingIncident
+                    ? "Saving..."
+                    : canUpdateIncident
+                      ? "Save Update"
+                      : "No Action Available"}
                 </button>
               </div>
             </form>

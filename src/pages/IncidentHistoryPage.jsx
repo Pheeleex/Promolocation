@@ -34,7 +34,7 @@ export default function IncidentHistoryPage() {
   const { data: incidents = [], isLoading, isError, error } = useIncidents();
   const { authUser } = useAuth();
   const navigate = useNavigate();
-  const canOpenIncidentDetails = !isSpecialAdminUser(authUser);
+  const canReportIncident = isSpecialAdminUser(authUser);
 
   const normalizedSearchTerm = searchTerm.trim().toLowerCase();
   const filteredIncidents = incidents.filter((incident) =>
@@ -68,14 +68,16 @@ export default function IncidentHistoryPage() {
         <div className="card-header">
           <h2>Incident History</h2>
           <div className="search-section">
-            <button
-              className="secondary-action-btn"
-              onClick={() => navigate("/report_incident")}
-              style={{ padding: '8px 16px' }}
-            >
-              <PlusIcon />
-              Report Incident
-            </button>
+            {canReportIncident ? (
+              <button
+                className="secondary-action-btn"
+                onClick={() => navigate("/report_incident")}
+                style={{ padding: "8px 16px" }}
+              >
+                <PlusIcon />
+                Report Incident
+              </button>
+            ) : null}
             <div className="search-bar">
               <SearchIcon />
               <input
@@ -136,17 +138,13 @@ export default function IncidentHistoryPage() {
                         </span>
                       </td>
                       <td className="actions-column">
-                        {canOpenIncidentDetails ? (
-                          <button
-                            type="button"
-                            className="view-button"
-                            onClick={() => navigate(`/incidents/${incident.id}`)}
-                          >
-                            View
-                          </button>
-                        ) : (
-                          "—"
-                        )}
+                        <button
+                          type="button"
+                          className="view-button"
+                          onClick={() => navigate(`/incidents/${incident.id}`)}
+                        >
+                          View
+                        </button>
                       </td>
                     </tr>
                   );

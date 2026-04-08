@@ -9,12 +9,12 @@ import IncidentHistoryPage from "./pages/IncidentHistoryPage";
 import LoginPage from "./pages/LoginPage";
 import PromotersPage from "./pages/PromotersPage";
 import ReportIncidentPage from "./pages/ReportIncidentPage";
-import { isAdminUser } from "./utils/authAccess";
+import { getDefaultAuthorizedPath } from "./utils/authAccess";
 
 function HomeRedirect() {
   const { authUser } = useAuth();
 
-  return <Navigate to={isAdminUser(authUser) ? "/promoters" : "/login"} replace />;
+  return <Navigate to={getDefaultAuthorizedPath(authUser)} replace />;
 }
 
 function AppRoutes() {
@@ -25,7 +25,7 @@ function AppRoutes() {
       <Route
         path="/promoters"
         element={
-          <ProtectedRoute>
+          <ProtectedRoute disallowSpecialAdmin>
             <PromotersPage />
           </ProtectedRoute>
         }
@@ -33,7 +33,7 @@ function AppRoutes() {
       <Route
         path="/promoters/new"
         element={
-          <ProtectedRoute>
+          <ProtectedRoute disallowSpecialAdmin>
             <AddPromoterPage />
           </ProtectedRoute>
         }
@@ -49,7 +49,7 @@ function AppRoutes() {
       <Route
         path="/incidents/:incidentId"
         element={
-          <ProtectedRoute disallowSpecialAdmin>
+          <ProtectedRoute>
             <IncidentDetailPage />
           </ProtectedRoute>
         }

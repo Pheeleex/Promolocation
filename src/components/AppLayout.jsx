@@ -2,7 +2,7 @@ import React from "react";
 import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { isSpecialAdminUser } from "../utils/authAccess";
+import { isRegularAdminUser, isSpecialAdminUser } from "../utils/authAccess";
 import { assetPath } from "../utils/assetPath";
 
 const navItems = [
@@ -36,7 +36,11 @@ export default function AppLayout({
   const { authUser, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const canManagePromoters = isRegularAdminUser(authUser);
   const canReportIncident = isSpecialAdminUser(authUser);
+  const visibleNavItems = canManagePromoters
+    ? navItems
+    : navItems.filter((item) => item.key === "incidents");
 
   useEffect(() => {
     document.body.classList.add("has-sidebar");
@@ -106,7 +110,7 @@ export default function AppLayout({
 
           <nav className="sidebar-nav">
             <ul>
-              {navItems.map((item) => (
+              {visibleNavItems.map((item) => (
                 <li key={item.key} className={item.key === activeNav ? "active" : ""}>
                   <Link
                     to={item.path}

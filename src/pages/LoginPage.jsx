@@ -4,7 +4,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
 import { useAuth } from "../context/AuthContext";
 import { useLogin } from "../hooks/useLogin";
-import { isAdminUser } from "../utils/authAccess";
+import { getDefaultAuthorizedPath, isAdminUser } from "../utils/authAccess";
 import { assetPath } from "../utils/assetPath";
 
 function getLoginErrorMessage(status) {
@@ -41,7 +41,9 @@ export default function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const apiToken = (import.meta.env.VITE_API_TOKEN ?? "").trim();
-  const redirectPath = location.state?.from?.pathname || "/promoters";
+  const redirectFromPath = location.state?.from?.pathname;
+  const getRedirectPath = (user) =>
+    redirectFromPath || getDefaultAuthorizedPath(user);
 
   useEffect(() => {
     if (!authUser) {
@@ -54,9 +56,9 @@ export default function LoginPage() {
     }
 
     if (authUser) {
-      navigate(redirectPath, { replace: true });
+      navigate(getRedirectPath(authUser), { replace: true });
     }
-  }, [authUser, logout, navigate, redirectPath]);
+  }, [authUser, logout, navigate, redirectFromPath]);
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -73,13 +75,13 @@ export default function LoginPage() {
     }
 
     try {
-      await loginUser({
+      const loggedInUser = await loginUser({
         token: apiToken,
         promoter_id: trimmedUserId,
         password: trimmedPassword,
       });
 
-      navigate(redirectPath, { replace: true });
+      navigate(getRedirectPath(loggedInUser), { replace: true });
     } catch (error) {
       console.error("Login backend error:", {
         status: error?.status,
