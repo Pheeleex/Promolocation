@@ -2,6 +2,7 @@ import React from "react";
 import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { isSpecialAdminUser } from "../utils/authAccess";
 import { assetPath } from "../utils/assetPath";
 
 const navItems = [
@@ -32,9 +33,10 @@ export default function AppLayout({
 }) {
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
-  const { logout } = useAuth();
+  const { authUser, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const canReportIncident = isSpecialAdminUser(authUser);
 
   useEffect(() => {
     document.body.classList.add("has-sidebar");
@@ -116,21 +118,23 @@ export default function AppLayout({
                   </Link>
                 </li>
               ))}
-              <li className={activeNav === "report_incident" ? "active" : ""}>
-                <Link
-                  to="/report_incident"
-                  className="report-link-sidebar"
-                  onClick={closeMobileSidebar}
-                >
-                  <div className="report-icon-container">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                      <line x1="12" y1="5" x2="12" y2="19"></line>
-                      <line x1="5" y1="12" x2="19" y2="12"></line>
-                    </svg>
-                  </div>
-                  <span>Report Incident</span>
-                </Link>
-              </li>
+              {canReportIncident ? (
+                <li className={activeNav === "report_incident" ? "active" : ""}>
+                  <Link
+                    to="/report_incident"
+                    className="report-link-sidebar"
+                    onClick={closeMobileSidebar}
+                  >
+                    <div className="report-icon-container">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                      </svg>
+                    </div>
+                    <span>Report Incident</span>
+                  </Link>
+                </li>
+              ) : null}
             </ul>
           </nav>
 

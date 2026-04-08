@@ -49,7 +49,7 @@ function AppRoutes() {
       <Route
         path="/incidents/:incidentId"
         element={
-          <ProtectedRoute>
+          <ProtectedRoute disallowSpecialAdmin>
             <IncidentDetailPage />
           </ProtectedRoute>
         }
@@ -57,7 +57,7 @@ function AppRoutes() {
       <Route
         path="/report_incident"
         element={
-          <ProtectedRoute>
+          <ProtectedRoute requireSpecialAdmin>
             <ReportIncidentPage />
           </ProtectedRoute>
         }

@@ -3,7 +3,9 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import AppLayout from "../components/AppLayout";
 import Pagination from "../components/Pagination";
+import { useAuth } from "../context/AuthContext";
 import { useIncidents } from "../hooks/use-incidents";
+import { isSpecialAdminUser } from "../utils/authAccess";
 import { formatLongDate, getIncidentStatusColor } from "../utils/formatters";
 
 const PAGE_SIZE = 10;
@@ -30,7 +32,9 @@ export default function IncidentHistoryPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(0);
   const { data: incidents = [], isLoading, isError, error } = useIncidents();
+  const { authUser } = useAuth();
   const navigate = useNavigate();
+  const canOpenIncidentDetails = !isSpecialAdminUser(authUser);
 
   const normalizedSearchTerm = searchTerm.trim().toLowerCase();
   const filteredIncidents = incidents.filter((incident) =>
@@ -132,13 +136,17 @@ export default function IncidentHistoryPage() {
                         </span>
                       </td>
                       <td className="actions-column">
-                        <button
-                          type="button"
-                          className="view-button"
-                          onClick={() => navigate(`/incidents/${incident.id}`)}
-                        >
-                          View
-                        </button>
+                        {canOpenIncidentDetails ? (
+                          <button
+                            type="button"
+                            className="view-button"
+                            onClick={() => navigate(`/incidents/${incident.id}`)}
+                          >
+                            View
+                          </button>
+                        ) : (
+                          "—"
+                        )}
                       </td>
                     </tr>
                   );
