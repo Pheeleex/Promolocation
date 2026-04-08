@@ -30,6 +30,27 @@ function normalizeIncidentDate(dateTime: string) {
   return dateTime.replace(" ", "T");
 }
 
+function normalizeIncidentStatus(status: string): Incident["status"] {
+  const normalizedStatus = status.trim().toLowerCase().replace(/[_-]+/g, " ");
+
+  switch (normalizedStatus) {
+    case "pending":
+      return "Pending";
+    case "in progress":
+      return "In Progress";
+    case "resolved":
+      return "Resolved";
+    case "not resolved":
+    case "deny":
+    case "denied":
+      return "Not Resolved";
+    case "closed":
+      return "Closed";
+    default:
+      return status as Incident["status"];
+  }
+}
+
 export function mapIncident(incident: RawIncident): Incident {
   return {
     id: incident.incident_id,
@@ -38,7 +59,7 @@ export function mapIncident(incident: RawIncident): Incident {
     issue: incident.incident_name,
     category: incident.issue_category,
     description: incident.description,
-    status: incident.status,
+    status: normalizeIncidentStatus(incident.status),
     date: normalizeIncidentDate(incident.created_at),
     image: incident.photo,
     adminNote: incident.admin_note,

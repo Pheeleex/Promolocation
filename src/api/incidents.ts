@@ -36,16 +36,42 @@ export async function getIncidents(userId: string): Promise<Incident[]> {
 export async function updateIncidentStatus(
   payload: UpdateIncidentStatusPayload
 ): Promise<UpdateIncidentStatusResponse> {
-  const response = await apiClient<UpdateIncidentStatusResponse>(
-    UPDATE_INCIDENT_STATUS_PATH,
-    {
-      method: "POST",
-      body: JSON.stringify({
-        token: API_TOKEN,
-        ...payload,
-      }),
-    },
-  );
+  const requestBody = {
+    token: API_TOKEN,
+    ...payload,
+  };
+
+  if (import.meta.env.DEV) {
+    console.log("[updateIncidentStatus] request", {
+      path: UPDATE_INCIDENT_STATUS_PATH,
+      payload: {
+        ...requestBody,
+        token: API_TOKEN ? "[present]" : "[missing]",
+      },
+    });
+  }
+
+  let response: UpdateIncidentStatusResponse;
+
+  try {
+    response = await apiClient<UpdateIncidentStatusResponse>(
+      UPDATE_INCIDENT_STATUS_PATH,
+      {
+        method: "POST",
+        body: JSON.stringify(requestBody),
+      },
+    );
+  } catch (error) {
+    if (import.meta.env.DEV) {
+      console.error("[updateIncidentStatus] error", error);
+    }
+
+    throw error;
+  }
+
+  if (import.meta.env.DEV) {
+    console.log("[updateIncidentStatus] response", response);
+  }
 
   if (response.status !== 200) {
     throw new Error("Failed to update incident.");
