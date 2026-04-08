@@ -17,6 +17,15 @@ function SearchIcon() {
   );
 }
 
+function PlusIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="12" y1="5" x2="12" y2="19"></line>
+      <line x1="5" y1="12" x2="19" y2="12"></line>
+    </svg>
+  );
+}
+
 export default function IncidentHistoryPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(0);
@@ -48,12 +57,21 @@ export default function IncidentHistoryPage() {
     }
   }, [currentPage, safeCurrentPage]);
 
+
   return (
     <AppLayout activeNav="incidents" mainContentClassName="promoters-main">
       <div className="main-card">
         <div className="card-header">
           <h2>Incident History</h2>
           <div className="search-section">
+            <button
+              className="secondary-action-btn"
+              onClick={() => navigate("/report_incident")}
+              style={{ padding: '8px 16px' }}
+            >
+              <PlusIcon />
+              Report Incident
+            </button>
             <div className="search-bar">
               <SearchIcon />
               <input
@@ -65,6 +83,7 @@ export default function IncidentHistoryPage() {
             </div>
           </div>
         </div>
+
 
         <div className="table-outer-border">
           <table id="incidentHistoryTable" className="data-table">

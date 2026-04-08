@@ -116,6 +116,21 @@ export default function AppLayout({
                   </Link>
                 </li>
               ))}
+              <li className={activeNav === "report_incident" ? "active" : ""}>
+                <Link
+                  to="/report_incident"
+                  className="report-link-sidebar"
+                  onClick={closeMobileSidebar}
+                >
+                  <div className="report-icon-container">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                      <line x1="12" y1="5" x2="12" y2="19"></line>
+                      <line x1="5" y1="12" x2="19" y2="12"></line>
+                    </svg>
+                  </div>
+                  <span>Report Incident</span>
+                </Link>
+              </li>
             </ul>
           </nav>
 
@@ -130,6 +145,33 @@ export default function AppLayout({
             </button>
           </div>
         </aside>
+
+        <style jsx>{`
+          .report-link-sidebar {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            color: var(--navy);
+            text-decoration: none;
+            transition: all 0.2s;
+          }
+          .report-icon-container {
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            opacity: 0.7;
+          }
+          .active .report-link-sidebar {
+            color: #3b82f6;
+          }
+          .active .report-icon-container {
+            opacity: 1;
+            color: #3b82f6;
+          }
+        `}</style>
 
         <div
           className="sidebar-backdrop"

@@ -38,9 +38,10 @@ export async function apiClient<T>(
   path: string,
   options?: RequestInit
 ): Promise<T> {
+  const isFormData = options?.body instanceof FormData;
   const response = await fetch(buildUrl(path), {
     headers: {
-      "Content-Type": "application/json",
+      ...(isFormData ? {} : { "Content-Type": "application/json" }),
       ...(options?.headers || {}),
     },
     ...options,

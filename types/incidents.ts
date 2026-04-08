@@ -67,3 +67,8 @@ export type UpdateIncidentStatusResponse = {
     admin_note?: string | null;
   };
 };
+export type CreateIncidentResponse = {
+  status: number;
+  message: string;
+  incident?: RawIncident;
+};

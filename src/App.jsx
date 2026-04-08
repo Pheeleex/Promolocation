@@ -8,6 +8,7 @@ import IncidentDetailPage from "./pages/IncidentDetailPage";
 import IncidentHistoryPage from "./pages/IncidentHistoryPage";
 import LoginPage from "./pages/LoginPage";
 import PromotersPage from "./pages/PromotersPage";
+import ReportIncidentPage from "./pages/ReportIncidentPage";
 import { isAdminUser } from "./utils/authAccess";
 
 function HomeRedirect() {
@@ -50,6 +51,14 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <IncidentDetailPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/report_incident"
+        element={
+          <ProtectedRoute>
+            <ReportIncidentPage />
           </ProtectedRoute>
         }
       />
