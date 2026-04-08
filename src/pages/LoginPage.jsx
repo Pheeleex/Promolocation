@@ -81,6 +81,12 @@ export default function LoginPage() {
 
       navigate(redirectPath, { replace: true });
     } catch (error) {
+      console.error("Login backend error:", {
+        status: error?.status,
+        message: error?.message,
+        details: error?.details,
+      });
+
       setPassword("");
       setIsPasswordVisible(false);
 

@@ -58,7 +58,8 @@ export async function apiClient<T>(
   if (!response.ok) {
     throw new ApiError(
       data?.message || "Request failed",
-      response.status
+      response.status,
+      data,
     );
   }
 
