@@ -1,22 +1,13 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Redirecting...</title>
-</head>
-<body>
- <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-<script>
-    document.addEventListener("DOMContentLoaded", function () {
-        const authUser = localStorage.getItem("authUser");
-
-        if (!authUser) {
-            window.location.href = "auth.html"; // make sure case matches your file name
-        } else {
-            window.location.href = "Promoters.html"
-        }
-    });
-</script>
-
-</body>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Promoters Management</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
 </html>
+
