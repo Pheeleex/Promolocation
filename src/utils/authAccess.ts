@@ -3,7 +3,9 @@ type AuthLikeUser = {
 } | null;
 
 export function hasAdminRole(userRole?: string | null) {
-  return userRole?.trim().toLowerCase() === "admin";
+  const normalizedRole = userRole?.trim().toLowerCase();
+
+  return normalizedRole === "admin" || normalizedRole === "specialadmin";
 }
 
 export function isAdminUser(user: AuthLikeUser) {

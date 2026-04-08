@@ -13,7 +13,7 @@ import { useAuthStore } from "../store/auth-store";
 import { assetPath } from "../utils/assetPath";
 import { formatLongDate, getIncidentStatusColor } from "../utils/formatters";
 
-const INCIDENT_STATUS_OPTIONS = ["In Progress", "Deny", "Resolved"];
+const INCIDENT_STATUS_OPTIONS = ["Pending", "In Progress", "Resolved"];
 
 function BackArrow() {
   return (
@@ -158,7 +158,7 @@ export default function IncidentDetailPage() {
       Swal.fire({
         icon: "error",
         title: "Select a Status",
-        text: "Choose In Progress, Deny, or Resolved before saving.",
+        text: "Choose Pending, In Progress, or Resolved before saving.",
         confirmButtonColor: "#d33",
       });
       return;
@@ -207,6 +207,8 @@ export default function IncidentDetailPage() {
         icon: "success",
         confirmButtonColor: "#0E2B63",
       });
+
+      navigate("/incidents", { replace: true });
     } catch (updateError) {
       await Swal.fire({
         title: "Unable to Update Incident",

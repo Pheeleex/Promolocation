@@ -13,6 +13,10 @@ import { getPromoterStatusColor } from "../utils/formatters";
 
 const PAGE_SIZE = 10;
 
+function isPromoterRole(role) {
+  return typeof role === "string" && role.trim().toLowerCase() === "promoter";
+}
+
 function PencilIcon() {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -64,7 +68,10 @@ export default function PromotersPage() {
     ? "Switch this off if you want to deactivate the account."
     : "Switch this on if you want to reactivate the account.";
 
-  const promoters = useMemo(() => fetchedPromoters, [fetchedPromoters]);
+  const promoters = useMemo(
+    () => fetchedPromoters.filter((promoter) => isPromoterRole(promoter.role)),
+    [fetchedPromoters],
+  );
 
   const normalizedSearchTerm = searchTerm.trim().toLowerCase();
 
