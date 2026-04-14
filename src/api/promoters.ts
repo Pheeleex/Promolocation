@@ -9,7 +9,7 @@ import {
   UpdatePromoterPayload,
   UpdatePromoterResponse,
 } from "../../types/promoters";
-import { authenticatedPost } from "./loggedIn-client";
+import { authenticatedFormPost, authenticatedPost } from "./loggedIn-client";
 
 const GET_USERS_PATH = "/get_users";
 const CREATE_PROMOTER_PATH = "/create_promoter";
@@ -28,14 +28,25 @@ export async function getPromoters(): Promise<Promoter[]> {
 
 
 export async function createPromoter(
-    payload: CreatePromoterPayload
-): Promise<CreatePromoterResponse>{
-    const response = await authenticatedPost<CreatePromoterResponse>(CREATE_PROMOTER_PATH, payload);
-    if (response.status !== 200) {
-        throw new Error("Failed to create promoter.");
-      
-    }
-    return response;
+  payload: CreatePromoterPayload
+): Promise<CreatePromoterResponse> {
+  const formData = new FormData();
+  formData.append("promoter_id", payload.promoter_id);
+  formData.append("first_name", payload.first_name ?? "");
+  formData.append("last_name", payload.last_name ?? "");
+  formData.append("promo_code", payload.promo_code);
+  formData.append("promo_URL", payload.promo_URL);
+
+  const response = await authenticatedFormPost<CreatePromoterResponse>(
+    CREATE_PROMOTER_PATH,
+    formData,
+  );
+
+  if (response.status !== 200) {
+    throw new Error(response.message || "Failed to create promoter.");
+  }
+
+  return response;
 }
 
 export async function updatePromoter(

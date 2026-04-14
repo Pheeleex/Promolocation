@@ -13,12 +13,15 @@ function getApiProxy(apiBaseUrl) {
       return undefined;
     }
 
+    const proxyConfig = {
+      target: url.origin,
+      changeOrigin: true,
+      secure: true,
+    };
+
     return {
-      [pathname]: {
-        target: url.origin,
-        changeOrigin: true,
-        secure: true,
-      },
+      [pathname]: proxyConfig,
+      "/admin_api": proxyConfig,
     };
   } catch {
     return undefined;

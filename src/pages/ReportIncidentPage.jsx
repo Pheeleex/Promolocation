@@ -5,6 +5,8 @@ import { createIncident } from "../api/incidents";
 import { useAuthStore } from "../store/auth-store";
 import { useQueryClient } from "@tanstack/react-query";
 import { getIncidentsQueryKey } from "../hooks/use-incidents";
+import { useAutoResizeTextarea } from "../hooks/use-auto-resize-textarea";
+import { validateImageUpload } from "../utils/imageUploadValidation";
 import Swal from "sweetalert2";
 
 export default function ReportIncidentPage() {
@@ -14,20 +16,48 @@ export default function ReportIncidentPage() {
   const [preview, setPreview] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const fileInputRef = useRef(null);
+  const descriptionTextareaRef = useRef(null);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user } = useAuthStore();
 
-  const handleImageChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      setImage(file);
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setPreview(reader.result);
-      };
-      reader.readAsDataURL(file);
+  useAutoResizeTextarea(descriptionTextareaRef, description);
+
+  const resetSelectedImage = () => {
+    setImage(null);
+    setPreview(null);
+
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
     }
+  };
+
+  const handleImageChange = (e) => {
+    const file = e.target.files?.[0];
+
+    if (!file) {
+      return;
+    }
+
+    const validationError = validateImageUpload(file);
+
+    if (validationError) {
+      resetSelectedImage();
+      Swal.fire({
+        icon: "error",
+        title: "Invalid Image",
+        text: validationError,
+        confirmButtonColor: "#d33",
+      });
+      return;
+    }
+
+    setImage(file);
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setPreview(reader.result);
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleSubmit = async (e) => {
@@ -52,6 +82,21 @@ export default function ReportIncidentPage() {
       return;
     }
 
+    if (image) {
+      const imageValidationError = validateImageUpload(image);
+
+      if (imageValidationError) {
+        resetSelectedImage();
+        Swal.fire({
+          icon: "error",
+          title: "Invalid Image",
+          text: imageValidationError,
+          confirmButtonColor: "#d33",
+        });
+        return;
+      }
+    }
+
     setIsSubmitting(true);
     try {
       await createIncident(
@@ -59,7 +104,7 @@ export default function ReportIncidentPage() {
         user.promoter_id,
         title,
         description,
-        image
+        image,
       );
 
       // Invalidate queries to refresh data
@@ -67,16 +112,15 @@ export default function ReportIncidentPage() {
         queryKey: getIncidentsQueryKey(String(user.user_id)),
       });
 
-      Swal.fire({
+      await Swal.fire({
         icon: "success",
         title: "Success",
         text: "Incident reported successfully!",
-        timer: 1500,
-        showConfirmButton: false,
+        confirmButtonColor: "#22c55e",
+        confirmButtonText: "OK",
       });
 
-      // Navigate to history after success
-      setTimeout(() => navigate("/incidents"), 1500);
+      navigate("/incidents");
     } catch (error) {
       console.error("Failed to submit incident:", error);
       Swal.fire({
@@ -122,6 +166,7 @@ export default function ReportIncidentPage() {
                   </label>
                   <textarea
                     id="incident-desc"
+                    ref={descriptionTextareaRef}
                     placeholder="Provide as much context as possible. Include device type, location, and specific observations..."
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
@@ -243,11 +288,6 @@ export default function ReportIncidentPage() {
           color: var(--navy);
         }
 
-        .required-mark {
-          color: #e05260;
-          margin-left: 2px;
-        }
-
         .field-hint {
           font-size: 12px;
           color: #94a3b8;
@@ -279,7 +319,8 @@ export default function ReportIncidentPage() {
           font-size: 15px;
           line-height: 1.6;
           transition: all 0.2s;
-          resize: vertical;
+          overflow: hidden;
+          resize: none;
         }
 
         .premium-textarea-field:focus {

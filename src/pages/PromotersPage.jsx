@@ -14,7 +14,9 @@ import { getPromoterStatusColor } from "../utils/formatters";
 const PAGE_SIZE = 10;
 
 function isPromoterRole(role) {
-  return typeof role === "string" && role.trim().toLowerCase() === "promoter";
+  const normalizedRole = typeof role === "string" ? role.trim().toLowerCase() : "";
+
+  return normalizedRole === "promoter" || normalizedRole === "user";
 }
 
 function PencilIcon() {
@@ -76,7 +78,7 @@ export default function PromotersPage() {
   const normalizedSearchTerm = searchTerm.trim().toLowerCase();
 
   const filteredPromoters = promoters.filter((promoter) =>
-    [promoter.promoterId, promoter.fullName, promoter.status]
+    [promoter.promoterId, promoter.promoterCode, promoter.fullName, promoter.status]
       .join(" ")
       .toLowerCase()
       .includes(normalizedSearchTerm),
@@ -142,8 +144,8 @@ export default function PromotersPage() {
       await updatePromoter({
         user_id: editingPromoter.id,
         promoter_id: editingPromoter.promoterId,
-        first_name: editingPromoter.firstName,
-        last_name: editingPromoter.lastName,
+        first_name: editingPromoter.firstName || "",
+        last_name: editingPromoter.lastName || "",
         status: editStatus ? "active" : "inactive",
       });
 
@@ -219,7 +221,7 @@ export default function PromotersPage() {
               <input
                 type="text"
                 value={searchTerm}
-                placeholder="Search promoter ID..."
+                placeholder="Search promoter ID or code..."
                 onChange={(event) => setSearchTerm(event.target.value)}
               />
             </div>
@@ -242,25 +244,34 @@ export default function PromotersPage() {
                 <th className="sortable-header">
                   <button
                     type="button"
+                    className={`sortable-label is-button${sortKey === "promoterCode" ? ` is-${sortDirection}` : ""}`}
+                    onClick={() => handleSort("promoterCode")}
+                  >
+                    Promoter Code
+                  </button>
+                </th>
+                <th className="sortable-header">
+                  <button
+                    type="button"
                     className={`sortable-label is-button${sortKey === "status" ? ` is-${sortDirection}` : ""}`}
                     onClick={() => handleSort("status")}
                   >
                     Status
                   </button>
                 </th>
-                <th className="actions-column">Actions</th>
+                <th className="actions-column">Action</th>
               </tr>
             </thead>
             <tbody>
               {isLoading ? (
                 <tr>
-                  <td colSpan="3">
+                  <td colSpan="4">
                     <div className="empty-state">Loading promoters...</div>
                   </td>
                 </tr>
               ) : isError ? (
                 <tr>
-                  <td colSpan="3">
+                  <td colSpan="4">
                     <div className="empty-state">
                       {error?.message || "Unable to load promoters."}
                     </div>
@@ -270,6 +281,7 @@ export default function PromotersPage() {
                 paginatedPromoters.map((promoter) => (
                   <tr key={promoter.id}>
                     <td>{promoter.promoterId}</td>
+                    <td>{promoter.promoterCode || "--"}</td>
                     <td>
                       <span
                         style={{
@@ -296,7 +308,7 @@ export default function PromotersPage() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan="3">
+                  <td colSpan="4">
                     <div className="empty-state">No promoters match your search.</div>
                   </td>
                 </tr>

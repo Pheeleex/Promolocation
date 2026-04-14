@@ -9,9 +9,18 @@ export function useLogin() {
 
   return useMutation<LoginResponse, ApiError, LoginPayload>({
     mutationFn: async (payload) => {
+      if (import.meta.env.DEV) {
+        console.log("[useLogin] payload", payload);
+      }
+
       const response = await login(payload);
 
+      if (import.meta.env.DEV) {
+        console.log("[useLogin] response", response);
+      }
+
       if (!hasAdminRole(response.user_role)) {
+        console.log(response.user_role, "your role")
         throw new ApiError("Only admin users can sign in to this dashboard.", 451);
       }
 

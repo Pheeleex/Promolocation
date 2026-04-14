@@ -9,15 +9,20 @@ import {
   useIncidents,
   useUpdateIncidentStatus,
 } from "../hooks/use-incidents";
+import {
+  getIncidentAuditTrailQueryKey,
+  useIncidentAuditTrail,
+} from "../hooks/use-incident-audit-trail";
 import { useAuthStore } from "../store/auth-store";
 import { isSpecialAdminUser } from "../utils/authAccess";
 import { assetPath } from "../utils/assetPath";
 import { formatLongDate, getIncidentStatusColor } from "../utils/formatters";
 
 const ADMIN_INCIDENT_ACTIONS = {
-  Pending: ["In Progress", "Resolved"],
-  "In Progress": ["Resolved"],
-  "Not Resolved": ["In Progress", "Resolved"],
+  Pending: ["In Progress", "On Hold", "Resolved"],
+  "In Progress": ["In Progress", "On Hold", "Resolved"],
+  "On Hold": ["In Progress", "On Hold", "Resolved"],
+  "Not Resolved": ["In Progress", "On Hold", "Resolved"],
 };
 
 const SPECIAL_ADMIN_INCIDENT_ACTIONS = {
@@ -43,6 +48,8 @@ function getIncidentActionHelperCopy(currentStatus, isSpecialAdmin) {
         return "This incident is pending admin review. You can act after the admin resolves it.";
       case "In Progress":
         return "An admin is currently working on this incident. You cannot update it right now.";
+      case "On Hold":
+        return "An admin has placed this incident on hold. You cannot update it right now.";
       case "Resolved":
         return "Review the admin resolution and either confirm it as closed or return it as not resolved.";
       case "Not Resolved":
@@ -56,13 +63,15 @@ function getIncidentActionHelperCopy(currentStatus, isSpecialAdmin) {
 
   switch (currentStatus) {
     case "Pending":
-      return "This incident has just been submitted. Move it into progress or resolve it.";
+      return "This incident has just been submitted. Move it into progress, place it on hold, or resolve it.";
     case "In Progress":
-      return "Continue working the incident or mark it resolved when the issue has been handled.";
+      return "Continue working the incident, place it on hold, keep it in progress, or mark it resolved when the issue has been handled.";
+    case "On Hold":
+      return "This incident is currently on hold. Move it back into progress, keep it on hold, or resolve it when work resumes.";
     case "Resolved":
       return "A special admin must now review this resolution before the incident can be closed.";
     case "Not Resolved":
-      return "The resolution was rejected. Move the incident back to In Progress or resolve it again.";
+      return "The resolution was rejected. Move the incident back to In Progress, place it on hold, or resolve it again.";
     case "Closed":
       return "This incident has been closed and can no longer be updated.";
     default:
@@ -123,6 +132,7 @@ export default function IncidentDetailPage() {
   const navigate = useNavigate();
 
   const incident = incidents.find((item) => item.id === incidentId);
+  const { data: auditTrail = [] } = useIncidentAuditTrail(incident);
   const statusColor = getIncidentStatusColor(incident?.status);
   const isSpecialAdmin = isSpecialAdminUser(authUser);
   const availableStatusOptions = getAvailableIncidentStatusOptions(
@@ -130,6 +140,7 @@ export default function IncidentDetailPage() {
     isSpecialAdmin,
   );
   const canUpdateIncident = availableStatusOptions.length > 0;
+  const isCommentRequired = selectedStatus === "Not Resolved";
   const incidentActionHelperCopy = getIncidentActionHelperCopy(
     incident?.status,
     isSpecialAdmin,
@@ -148,8 +159,8 @@ export default function IncidentDetailPage() {
     }
 
     setSelectedStatus("");
-    setAdminNote(incident.adminNote || "");
-  }, [incident, isSpecialAdmin]);
+    setAdminNote(canUpdateIncident ? "" : incident.adminNote || "");
+  }, [incident, canUpdateIncident]);
 
   useEffect(() => {
     if (!isLightboxOpen) {
@@ -255,6 +266,16 @@ export default function IncidentDetailPage() {
       return;
     }
 
+    if (isSpecialAdmin && selectedStatus === "Not Resolved" && !trimmedAdminNote) {
+      Swal.fire({
+        icon: "error",
+        title: "Comment Required",
+        text: "Add a comment before marking this incident as not resolved.",
+        confirmButtonColor: "#d33",
+      });
+      return;
+    }
+
     const result = await Swal.fire({
       title: "Update Incident?",
       text: `This will change the incident status to ${selectedStatus}.`,
@@ -272,10 +293,9 @@ export default function IncidentDetailPage() {
 
     try {
       await updateIncidentStatus({
-        admin_id: authUserId ? String(authUserId) : "",
         incident_id: incident.id,
         status: selectedStatus,
-        admin_note: trimmedAdminNote,
+        comment: trimmedAdminNote || undefined,
       });
 
       queryClient.setQueryData(
@@ -291,6 +311,9 @@ export default function IncidentDetailPage() {
               : currentIncident,
           ),
       );
+      queryClient.invalidateQueries({
+        queryKey: getIncidentAuditTrailQueryKey(incident.id),
+      });
 
       await Swal.fire({
         title: "Incident Updated",
@@ -398,7 +421,10 @@ export default function IncidentDetailPage() {
             <form className="incident-action-form" onSubmit={handleStatusUpdate}>
               <div className="incident-action-grid">
                 <div className="incident-input-group">
-                  <label htmlFor="incidentStatus">Update Status</label>
+                  <label htmlFor="incidentStatus">
+                    Update Status
+                    {canUpdateIncident ? <span className="required-mark">*</span> : null}
+                  </label>
                   <select
                     id="incidentStatus"
                     value={selectedStatus}
@@ -417,7 +443,10 @@ export default function IncidentDetailPage() {
                 </div>
 
                 <div className="incident-input-group incident-comment-group">
-                  <label htmlFor="adminComment">Comment</label>
+                  <label htmlFor="adminComment">
+                    Comment
+                    {isCommentRequired ? <span className="required-mark">*</span> : null}
+                  </label>
                   <textarea
                     id="adminComment"
                     rows="5"
@@ -447,6 +476,48 @@ export default function IncidentDetailPage() {
                 </button>
               </div>
             </form>
+          </div>
+
+          <hr className="section-divider" />
+
+          <div className="description-section">
+            <h3 className="card-section-title">Audit Trail:</h3>
+            <p className="audit-trail-copy">
+              Every incident action is recorded here so the full review history stays visible.
+            </p>
+
+            <div className="audit-trail-table-wrapper">
+              <table className="audit-trail-table">
+                <thead>
+                  <tr>
+                    <th>User ID</th>
+                    <th>Action</th>
+                    <th>Comment</th>
+                    <th>Date &amp; Time</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {auditTrail.length ? (
+                    auditTrail.map((auditEntry) => (
+                      <tr key={auditEntry.id}>
+                        <td>{auditEntry.userId}</td>
+                        <td>{auditEntry.action}</td>
+                        <td>{auditEntry.comment || "--"}</td>
+                        <td>{formatLongDate(auditEntry.dateTime)}</td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan="4">
+                        <div className="audit-trail-empty-state">
+                          No audit entries have been recorded for this incident yet.
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       </div>

@@ -1,6 +1,8 @@
 import React, { useState, useRef } from "react";
 import { createIncident } from "../api/incidents";
+import { useAutoResizeTextarea } from "../hooks/use-auto-resize-textarea";
 import { useAuthStore } from "../store/auth-store";
+import { validateImageUpload } from "../utils/imageUploadValidation";
 import Swal from "sweetalert2";
 
 export default function CreateIncidentForm({ onCancel, onSuccess }) {
@@ -10,18 +12,46 @@ export default function CreateIncidentForm({ onCancel, onSuccess }) {
   const [preview, setPreview] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const fileInputRef = useRef(null);
+  const descriptionTextareaRef = useRef(null);
   const { user } = useAuthStore();
 
-  const handleImageChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      setImage(file);
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setPreview(reader.result);
-      };
-      reader.readAsDataURL(file);
+  useAutoResizeTextarea(descriptionTextareaRef, description);
+
+  const resetSelectedImage = () => {
+    setImage(null);
+    setPreview(null);
+
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
     }
+  };
+
+  const handleImageChange = (e) => {
+    const file = e.target.files?.[0];
+
+    if (!file) {
+      return;
+    }
+
+    const validationError = validateImageUpload(file);
+
+    if (validationError) {
+      resetSelectedImage();
+      Swal.fire({
+        icon: "error",
+        title: "Invalid Image",
+        text: validationError,
+        confirmButtonColor: "#d33",
+      });
+      return;
+    }
+
+    setImage(file);
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setPreview(reader.result);
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleSubmit = async (e) => {
@@ -42,6 +72,19 @@ export default function CreateIncidentForm({ onCancel, onSuccess }) {
         icon: "error",
         title: "Missing Identification",
         text: "Your account information is incomplete (missing User ID or Promoter ID). Please contact support.",
+      });
+      return;
+    }
+
+    const imageValidationError = validateImageUpload(image);
+
+    if (imageValidationError) {
+      resetSelectedImage();
+      Swal.fire({
+        icon: "error",
+        title: "Invalid Image",
+        text: imageValidationError,
+        confirmButtonColor: "#d33",
       });
       return;
     }
@@ -82,7 +125,9 @@ export default function CreateIncidentForm({ onCancel, onSuccess }) {
       
       <form onSubmit={handleSubmit}>
         <div className="form-group">
-          <label htmlFor="incident-title">Issue Title</label>
+          <label htmlFor="incident-title">
+            Issue Title <span className="required-mark">*</span>
+          </label>
           <input
             id="incident-title"
             type="text"
@@ -94,9 +139,12 @@ export default function CreateIncidentForm({ onCancel, onSuccess }) {
         </div>
 
         <div className="form-group">
-          <label htmlFor="incident-desc">Description</label>
+          <label htmlFor="incident-desc">
+            Description <span className="required-mark">*</span>
+          </label>
           <textarea
             id="incident-desc"
+            ref={descriptionTextareaRef}
             placeholder="Provide a detailed description of the incident..."
             value={description}
             onChange={(e) => setDescription(e.target.value)}
@@ -105,7 +153,9 @@ export default function CreateIncidentForm({ onCancel, onSuccess }) {
         </div>
 
         <div className="form-group">
-          <label>Proof / Image</label>
+          <label>
+            Proof / Image <span className="required-mark">*</span>
+          </label>
           <div 
             className={`image-upload-area ${preview ? "has-preview" : ""}`}
             onClick={() => !isSubmitting && fileInputRef.current.click()}
@@ -185,7 +235,8 @@ export default function CreateIncidentForm({ onCancel, onSuccess }) {
         }
         .form-group textarea {
           min-height: 100px;
-          resize: vertical;
+          overflow: hidden;
+          resize: none;
         }
         .image-upload-area {
           border: 2px dashed #ccc;

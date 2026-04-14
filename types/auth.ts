@@ -1,7 +1,7 @@
 // src/types/auth.ts
 export type LoginPayload = {
   token: string;
-  promoter_id: string;
+  email: string;
   password: string;
 };
 
@@ -13,7 +13,7 @@ export type LoginResponse = {
   token_type: 'Bearer';
   expires_in: number;
   user_id: number;
-  promoter_id: string;
+  promoter_id?: string | null;
   email: string;
   fullname: string;
   first_name: string;
@@ -24,6 +24,44 @@ export type LoginResponse = {
   active: boolean;
   email_verified: boolean;
   is_resolved: boolean;
+};
+
+export type ChangePasswordPayload = {
+  token: string;
+  current_password: string;
+  new_password: string;
+  confirm_password: string;
+};
+
+export type ChangePasswordResponse = {
+  status: number;
+  message: string;
+  changed_at?: string;
+};
+
+export type ForgotPasswordPayload = {
+  token: string;
+  email: string;
+  test?: boolean;
+};
+
+export type ForgotPasswordResponse = {
+  status: number;
+  message: string;
+  plain_code?: string;
+};
+
+export type ResetAdminPasswordPayload = {
+  token: string;
+  email: string;
+  code: string;
+  new_password: string;
+  confirm_password: string;
+};
+
+export type ResetAdminPasswordResponse = {
+  status: number;
+  message: string;
 };
 
 export class ApiError extends Error {

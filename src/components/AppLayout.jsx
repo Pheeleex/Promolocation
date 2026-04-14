@@ -26,6 +26,15 @@ const navItems = [
   },
 ];
 
+function SettingsIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9">
+      <path d="M10.325 4.317a1.724 1.724 0 0 1 3.35 0 1.724 1.724 0 0 0 2.573 1.066 1.724 1.724 0 0 1 2.893 1.675 1.724 1.724 0 0 0 1.508 2.246 1.724 1.724 0 0 1 0 3.35 1.724 1.724 0 0 0-1.508 2.246 1.724 1.724 0 0 1-2.893 1.675 1.724 1.724 0 0 0-2.573 1.066 1.724 1.724 0 0 1-3.35 0 1.724 1.724 0 0 0-2.573-1.066 1.724 1.724 0 0 1-2.893-1.675 1.724 1.724 0 0 0-1.508-2.246 1.724 1.724 0 0 1 0-3.35 1.724 1.724 0 0 0 1.508-2.246 1.724 1.724 0 0 1 2.893-1.675 1.724 1.724 0 0 0 2.573-1.066Z" />
+      <circle cx="12" cy="12" r="3.25" />
+    </svg>
+  );
+}
+
 export default function AppLayout({
   activeNav,
   mainContentClassName = "",
@@ -143,6 +152,17 @@ export default function AppLayout({
           </nav>
 
           <div className="sidebar-footer">
+            <div className="sidebar-footer-links">
+              <Link
+                to="/settings"
+                className={`sidebar-footer-link${activeNav === "settings" ? " active" : ""}`}
+                aria-current={activeNav === "settings" ? "page" : undefined}
+                onClick={closeMobileSidebar}
+              >
+                <SettingsIcon />
+                <span>Settings</span>
+              </Link>
+            </div>
             <button
               type="button"
               className="logout-link"

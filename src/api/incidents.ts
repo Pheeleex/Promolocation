@@ -1,17 +1,25 @@
-import { mapIncident } from "../../types/mapper";
+import { mapIncident, mapIncidentAuditEntry } from "../../types/mapper";
 import {
   CreateIncidentResponse,
+  GetIncidentAuditTrailResponse,
   GetIncidentsResponse,
   Incident,
+  IncidentAuditEntry,
   UpdateIncidentStatusPayload,
   UpdateIncidentStatusResponse,
 } from "../../types/incidents";
 import { apiClient } from "./client";
+import { authenticatedAdminPost } from "./loggedIn-client";
 
 const API_TOKEN = import.meta.env.VITE_API_TOKEN ?? "";
 const GET_INCIDENTS_PATH = "/get_incidents";
-const UPDATE_INCIDENT_STATUS_PATH = "/update_incident_status";
+const UPDATE_INCIDENT_STATUS_PATH = "/admin_api/update_incident";
+const GET_INCIDENT_AUDIT_TRAIL_PATH = "/admin_api/get_incident_audit_trail";
 const CREATE_INCIDENT_PATH = "/create_incident";
+
+function normalizeIncidentIdentifier(incidentId: string) {
+  return /^\d+$/.test(incidentId) ? Number(incidentId) : incidentId;
+}
 
 export async function getIncidents(userId: string): Promise<Incident[]> {
   if (!userId) {
@@ -36,48 +44,42 @@ export async function getIncidents(userId: string): Promise<Incident[]> {
 export async function updateIncidentStatus(
   payload: UpdateIncidentStatusPayload
 ): Promise<UpdateIncidentStatusResponse> {
-  const requestBody = {
-    token: API_TOKEN,
-    ...payload,
-  };
-
-  if (import.meta.env.DEV) {
-    console.log("[updateIncidentStatus] request", {
-      path: UPDATE_INCIDENT_STATUS_PATH,
-      payload: {
-        ...requestBody,
-        token: API_TOKEN ? "[present]" : "[missing]",
-      },
-    });
-  }
-
-  let response: UpdateIncidentStatusResponse;
-
-  try {
-    response = await apiClient<UpdateIncidentStatusResponse>(
-      UPDATE_INCIDENT_STATUS_PATH,
-      {
-        method: "POST",
-        body: JSON.stringify(requestBody),
-      },
-    );
-  } catch (error) {
-    if (import.meta.env.DEV) {
-      console.error("[updateIncidentStatus] error", error);
-    }
-
-    throw error;
-  }
-
-  if (import.meta.env.DEV) {
-    console.log("[updateIncidentStatus] response", response);
-  }
+  const response = await authenticatedAdminPost<UpdateIncidentStatusResponse>(
+    UPDATE_INCIDENT_STATUS_PATH,
+    {
+      ...payload,
+      incident_id: normalizeIncidentIdentifier(payload.incident_id),
+    },
+  );
 
   if (response.status !== 200) {
-    throw new Error("Failed to update incident.");
+    throw new Error(response.message || "Failed to update incident.");
   }
 
   return response;
+}
+
+export async function getIncidentAuditTrail(
+  incidentId: string,
+): Promise<IncidentAuditEntry[]> {
+  const normalizedIncidentId = incidentId ? String(incidentId) : "";
+
+  if (!normalizedIncidentId) {
+    throw new Error("Incident ID is required.");
+  }
+
+  const response = await authenticatedAdminPost<GetIncidentAuditTrailResponse>(
+    GET_INCIDENT_AUDIT_TRAIL_PATH,
+    {
+      incident_id: normalizeIncidentIdentifier(normalizedIncidentId),
+    },
+  );
+
+  if (response.status !== 200) {
+    throw new Error(response.message || "Failed to fetch incident audit trail.");
+  }
+
+  return response.audit_trail.map(mapIncidentAuditEntry);
 }
 
 export async function createIncident(

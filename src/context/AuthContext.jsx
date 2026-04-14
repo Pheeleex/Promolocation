@@ -1,21 +1,38 @@
 import React from "react";
-import { createContext, useContext } from "react";
-import { useAuthStore } from "../store/auth-store";
+import { createContext, useContext, useEffect } from "react";
+import { isAccessTokenExpired, useAuthStore } from "../store/auth-store";
 
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
-  const authUser = useAuthStore((state) => state.user);
+  const storedAuthUser = useAuthStore((state) => state.user);
+  const accessToken = useAuthStore((state) => state.accessToken);
+  const expiresAt = useAuthStore((state) => state.expiresAt);
   const login = useAuthStore((state) => state.setAuth);
   const logoutFromStore = useAuthStore((state) => state.logout);
+  const authUser =
+    storedAuthUser && accessToken && !isAccessTokenExpired(expiresAt)
+      ? storedAuthUser
+      : null;
 
   const logout = () => {
     logoutFromStore();
 
     if (typeof window !== "undefined") {
       window.localStorage.removeItem("authUser");
+      window.localStorage.removeItem("auth-storage");
     }
   };
+
+  useEffect(() => {
+    if (!storedAuthUser) {
+      return;
+    }
+
+    if (!accessToken || isAccessTokenExpired(expiresAt)) {
+      logout();
+    }
+  }, [accessToken, expiresAt, storedAuthUser]);
 
   return (
     <AuthContext.Provider

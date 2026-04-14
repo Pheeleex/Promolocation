@@ -66,6 +66,7 @@ export function getIncidentStatusColor(status) {
     Resolved: "#16A34A",
     Closed: "#64748B",
     "In Progress": "#2563EB",
+    "On Hold": "#F97316",
     Pending: "#EAB308",
     "Not Resolved": "#DC2626",
     Active: "#22C55E",

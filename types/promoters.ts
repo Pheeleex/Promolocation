@@ -39,7 +39,7 @@ export type RawPromoter = {
   privacy_view: string;
   push_notification: string;
   device_token: string | null;
-  userAccessCode: string;
+  promo_code: string | null;
 };
 
 export type GetUsersResponse = {
@@ -52,6 +52,7 @@ export type PromoterStatus = "Active" | "Inactive";
 export type Promoter = {
   id: string;
   promoterId: string;
+  promoterCode: string;
   firstName: string;
   lastName: string;
   fullName: string;
@@ -74,9 +75,10 @@ export type Promoter = {
 
 export type CreatePromoterPayload = {
   promoter_id: string;
-  first_name: string;
-  last_name: string;
-  user_role: string;
+  first_name?: string;
+  last_name?: string;
+  promo_code: string;
+  promo_URL: File;
 };
 
 export type UpdatePromoterStatusValue = "active" | "inactive";

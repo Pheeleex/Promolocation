@@ -1,4 +1,9 @@
-import { Incident, RawIncident } from "./incidents";
+import {
+  Incident,
+  IncidentAuditEntry,
+  RawIncident,
+  RawIncidentAuditEntry,
+} from "./incidents";
 import { Promoter, PromoterStatus, RawPromoter } from "./promoters";
 
 export function mapPromoter(user: RawPromoter): Promoter {
@@ -7,6 +12,7 @@ export function mapPromoter(user: RawPromoter): Promoter {
   return {
     id: user.id,
     promoterId: user.promoter_id,
+    promoterCode: user.promo_code || "",
     firstName: user.first_name,
     lastName: user.last_name,
     fullName: user.fullname.replace(/\s+/g, " ").trim(),
@@ -38,6 +44,8 @@ function normalizeIncidentStatus(status: string): Incident["status"] {
       return "Pending";
     case "in progress":
       return "In Progress";
+    case "on hold":
+      return "On Hold";
     case "resolved":
       return "Resolved";
     case "not resolved":
@@ -63,5 +71,17 @@ export function mapIncident(incident: RawIncident): Incident {
     date: normalizeIncidentDate(incident.created_at),
     image: incident.photo,
     adminNote: incident.admin_note,
+  };
+}
+
+export function mapIncidentAuditEntry(entry: RawIncidentAuditEntry): IncidentAuditEntry {
+  return {
+    id: String(entry.audit_id),
+    incidentId: String(entry.incident_id),
+    userId: String(entry.user_id),
+    incidentTitle: entry.incident_title,
+    action: entry.action,
+    comment: entry.comment,
+    dateTime: normalizeIncidentDate(entry.date_time),
   };
 }

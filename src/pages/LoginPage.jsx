@@ -1,7 +1,8 @@
 import React from "react";
 import { useEffect, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
+import PasswordField from "../components/PasswordField";
 import { useAuth } from "../context/AuthContext";
 import { useLogin } from "../hooks/useLogin";
 import { getDefaultAuthorizedPath, isAdminUser } from "../utils/authAccess";
@@ -16,7 +17,7 @@ function getLoginErrorMessage(status) {
     case 403:
       return "Email not verified.";
     case 404:
-      return "No account found with that promoter ID.";
+      return "No account found with that email.";
     case 406:
       return "Account pending admin approval.";
     case 423:
@@ -29,11 +30,10 @@ function getLoginErrorMessage(status) {
 }
 
 export default function LoginPage() {
-  const [userId, setUserId] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [isPasswordVisible, setIsPasswordVisible] = useState(false);
   const [errors, setErrors] = useState({
-    userId: "",
+    email: "",
     password: "",
   });
   const { authUser, logout } = useAuth();
@@ -63,12 +63,12 @@ export default function LoginPage() {
   const handleSubmit = async (event) => {
     event.preventDefault();
 
-    const trimmedUserId = userId.trim();
+    const trimmedEmail = email.trim().toLowerCase();
     const trimmedPassword = password.trim();
 
-    if (!trimmedUserId || !trimmedPassword) {
+    if (!trimmedEmail || !trimmedPassword) {
       setErrors({
-        userId: trimmedUserId ? "" : "User ID is required.",
+        email: trimmedEmail ? "" : "Email is required.",
         password: trimmedPassword ? "" : "Password is required.",
       });
       return;
@@ -77,7 +77,7 @@ export default function LoginPage() {
     try {
       const loggedInUser = await loginUser({
         token: apiToken,
-        promoter_id: trimmedUserId,
+        email: trimmedEmail,
         password: trimmedPassword,
       });
 
@@ -90,7 +90,6 @@ export default function LoginPage() {
       });
 
       setPassword("");
-      setIsPasswordVisible(false);
 
       Swal.fire({
         icon: "error",
@@ -116,79 +115,63 @@ export default function LoginPage() {
 
         <form className="login-form" onSubmit={handleSubmit}>
           <div className="input-group">
-            <label htmlFor="userid">Enter Your User ID</label>
+            <label htmlFor="email">
+              Email Address <span className="required-mark">*</span>
+            </label>
             <input
-              id="userid"
-              type="text"
-              placeholder="User ID..."
-              value={userId}
+              id="email"
+              type="email"
+              placeholder="admin@example.com"
+              value={email}
               disabled={isPending}
-              aria-invalid={Boolean(errors.userId)}
-              aria-describedby={errors.userId ? "userid-error" : undefined}
-              className={errors.userId ? "input-error" : ""}
+              autoComplete="email"
+              aria-invalid={Boolean(errors.email)}
+              aria-describedby={errors.email ? "email-error" : undefined}
+              className={errors.email ? "input-error" : ""}
               onChange={(event) => {
-                setUserId(event.target.value);
+                setEmail(event.target.value);
                 setErrors((currentErrors) => ({
                   ...currentErrors,
-                  userId: "",
+                  email: "",
                 }));
               }}
             />
-            {errors.userId ? (
-              <p id="userid-error" className="field-error" role="alert">
-                {errors.userId}
+            {errors.email ? (
+              <p id="email-error" className="field-error" role="alert">
+                {errors.email}
               </p>
             ) : null}
           </div>
 
-          <div className="input-group">
-            <label htmlFor="password">Password</label>
-            <div
-              className={`password-input-wrapper${password ? " has-toggle" : ""}`}
-            >
-              <input
-                id="password"
-                type={isPasswordVisible ? "text" : "password"}
-                placeholder="Password...."
-                value={password}
-                disabled={isPending}
-                aria-invalid={Boolean(errors.password)}
-                aria-describedby={errors.password ? "password-error" : undefined}
-                className={errors.password ? "input-error" : ""}
-                onChange={(event) => {
-                  setPassword(event.target.value);
-                  setErrors((currentErrors) => ({
-                    ...currentErrors,
-                    password: "",
-                  }));
-                }}
-              />
-              {password ? (
-                <button
-                  type="button"
-                  className="password-toggle-btn"
-                  aria-label={isPasswordVisible ? "Hide password" : "Show password"}
-                  aria-pressed={isPasswordVisible}
-                  disabled={isPending}
-                  onClick={() =>
-                    setIsPasswordVisible((currentValue) => !currentValue)
-                  }
-                >
-                  {isPasswordVisible ? "Hide" : "Show"}
-                </button>
-              ) : null}
-            </div>
-            {errors.password ? (
-              <p id="password-error" className="field-error" role="alert">
-                {errors.password}
-              </p>
-            ) : null}
+          <PasswordField
+            id="password"
+            label="Password"
+            value={password}
+            onChange={(event) => {
+              setPassword(event.target.value);
+              setErrors((currentErrors) => ({
+                ...currentErrors,
+                password: "",
+              }));
+            }}
+            error={errors.password}
+            disabled={isPending}
+            placeholder="Password...."
+            autoComplete="current-password"
+            required
+          />
+
+          <div className="auth-inline-actions">
+            <Link to="/forgot-password" className="auth-inline-link">
+              Forgot password?
+            </Link>
           </div>
 
           <button type="submit" className="login-btn" disabled={isPending}>
             {isPending ? "Logging in..." : "Login"}
           </button>
         </form>
+
       </div>
     </div>
   );

@@ -15,6 +15,16 @@ export type RawIncident = {
   reporter_phone: string | null;
 };
 
+export type RawIncidentAuditEntry = {
+  audit_id: string | number;
+  incident_id: string | number;
+  user_id: string | number;
+  incident_title: string;
+  action: string;
+  comment: string | null;
+  date_time: string;
+};
+
 export type IncidentSummary = {
   pending: number;
   in_progress: number;
@@ -32,12 +42,14 @@ export type GetIncidentsResponse = {
 export type IncidentStatus =
   | "Pending"
   | "In Progress"
+  | "On Hold"
   | "Resolved"
   | "Not Resolved"
   | "Closed";
 
 export type EditableIncidentStatus =
   | "In Progress"
+  | "On Hold"
   | "Resolved"
   | "Not Resolved"
   | "Closed";
@@ -55,22 +67,39 @@ export type Incident = {
   adminNote: string | null;
 };
 
+export type IncidentAuditEntry = {
+  id: string;
+  incidentId: string;
+  userId: string;
+  incidentTitle: string;
+  action: string;
+  comment: string | null;
+  dateTime: string;
+};
+
 export type UpdateIncidentStatusPayload = {
-  admin_id: string;
   incident_id: string;
   status: EditableIncidentStatus;
-  admin_note: string;
+  comment?: string;
 };
 
 export type UpdateIncidentStatusResponse = {
   status: number;
   message: string;
   incident?: {
-    incident_id?: string;
+    incident_id?: string | number;
     status?: IncidentStatus;
+    comment?: string | null;
     admin_note?: string | null;
   };
 };
+
+export type GetIncidentAuditTrailResponse = {
+  status: number;
+  message: string;
+  audit_trail: RawIncidentAuditEntry[];
+};
+
 export type CreateIncidentResponse = {
   status: number;
   message: string;
