@@ -7,6 +7,10 @@ import { useQueryClient } from "@tanstack/react-query";
 import { getIncidentsQueryKey } from "../hooks/use-incidents";
 import { useAutoResizeTextarea } from "../hooks/use-auto-resize-textarea";
 import { validateImageUpload } from "../utils/imageUploadValidation";
+import {
+  getMissingIncidentFieldLabels,
+  getMissingIncidentFieldsAlertConfig,
+} from "../utils/incidentFormValidation";
 import Swal from "sweetalert2";
 
 export default function ReportIncidentPage() {
@@ -63,11 +67,19 @@ export default function ReportIncidentPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!title || !description) {
+    const trimmedTitle = title.trim();
+    const trimmedDescription = description.trim();
+    const missingFieldLabels = getMissingIncidentFieldLabels({
+      title: trimmedTitle,
+      description: trimmedDescription,
+    });
+    const missingFieldsAlert = getMissingIncidentFieldsAlertConfig(missingFieldLabels);
+
+    if (missingFieldsAlert) {
       Swal.fire({
         icon: "warning",
-        title: "Missing Information",
-        text: "Please fill in all required fields (Title and Description).",
+        title: missingFieldsAlert.title,
+        text: missingFieldsAlert.text,
         confirmButtonColor: "#3085d6",
       });
       return;
@@ -102,8 +114,8 @@ export default function ReportIncidentPage() {
       await createIncident(
         user.user_id.toString(),
         user.promoter_id,
-        title,
-        description,
+        trimmedTitle,
+        trimmedDescription,
         image,
       );
 

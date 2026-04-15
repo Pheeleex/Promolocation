@@ -148,10 +148,6 @@ export default function SettingsPage() {
               <span className="settings-meta-label">Email Address</span>
               <strong>{authUser?.email || "--"}</strong>
             </div>
-            <div className="settings-meta-item">
-              <span className="settings-meta-label">Phone</span>
-              <strong>{authUser?.phone || "--"}</strong>
-            </div>
           </div>
         </section>
 

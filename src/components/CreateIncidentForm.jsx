@@ -3,6 +3,10 @@ import { createIncident } from "../api/incidents";
 import { useAutoResizeTextarea } from "../hooks/use-auto-resize-textarea";
 import { useAuthStore } from "../store/auth-store";
 import { validateImageUpload } from "../utils/imageUploadValidation";
+import {
+  getMissingIncidentFieldLabels,
+  getMissingIncidentFieldsAlertConfig,
+} from "../utils/incidentFormValidation";
 import Swal from "sweetalert2";
 
 export default function CreateIncidentForm({ onCancel, onSuccess }) {
@@ -57,11 +61,21 @@ export default function CreateIncidentForm({ onCancel, onSuccess }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!title || !description || !image) {
+    const trimmedTitle = title.trim();
+    const trimmedDescription = description.trim();
+    const missingFieldLabels = getMissingIncidentFieldLabels({
+      title: trimmedTitle,
+      description: trimmedDescription,
+      image,
+      imageRequired: true,
+    });
+    const missingFieldsAlert = getMissingIncidentFieldsAlertConfig(missingFieldLabels);
+
+    if (missingFieldsAlert) {
       Swal.fire({
         icon: "warning",
-        title: "Missing Information",
-        text: "Please fill in all fields (Title, Description, and Image).",
+        title: missingFieldsAlert.title,
+        text: missingFieldsAlert.text,
         confirmButtonColor: "#3085d6",
       });
       return;
@@ -94,8 +108,8 @@ export default function CreateIncidentForm({ onCancel, onSuccess }) {
       await createIncident(
         user.user_id.toString(),
         user.promoter_id,
-        title,
-        description,
+        trimmedTitle,
+        trimmedDescription,
         image
       );
       Swal.fire({

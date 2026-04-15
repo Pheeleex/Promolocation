@@ -1,5 +1,5 @@
 import React from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useParams } from "react-router-dom";
 import Swal from "sweetalert2";
@@ -13,6 +13,7 @@ import {
   getIncidentAuditTrailQueryKey,
   useIncidentAuditTrail,
 } from "../hooks/use-incident-audit-trail";
+import { useAutoResizeTextarea } from "../hooks/use-auto-resize-textarea";
 import { useAuthStore } from "../store/auth-store";
 import { isSpecialAdminUser } from "../utils/authAccess";
 import { assetPath } from "../utils/assetPath";
@@ -122,6 +123,7 @@ export default function IncidentDetailPage() {
   const [hasImageError, setHasImageError] = useState(false);
   const [selectedStatus, setSelectedStatus] = useState("");
   const [adminNote, setAdminNote] = useState("");
+  const adminCommentTextareaRef = useRef(null);
   const { incidentId } = useParams();
   const { data: incidents = [], isLoading, isError, error } = useIncidents();
   const { mutateAsync: updateIncidentStatus, isPending: isUpdatingIncident } =
@@ -146,6 +148,8 @@ export default function IncidentDetailPage() {
     isSpecialAdmin,
   );
   const incidentActionTitle = isSpecialAdmin ? "Incident Review" : "Incident Action";
+
+  useAutoResizeTextarea(adminCommentTextareaRef, adminNote);
 
   useEffect(() => {
     setHasImageError(false);
@@ -273,21 +277,6 @@ export default function IncidentDetailPage() {
         text: "Add a comment before marking this incident as not resolved.",
         confirmButtonColor: "#d33",
       });
-      return;
-    }
-
-    const result = await Swal.fire({
-      title: "Update Incident?",
-      text: `This will change the incident status to ${selectedStatus}.`,
-      icon: "question",
-      showCancelButton: true,
-      confirmButtonColor: "#0E2B63",
-      cancelButtonColor: "#94a3b8",
-      confirmButtonText: "Yes, Save Update",
-      cancelButtonText: "Cancel",
-    });
-
-    if (!result.isConfirmed) {
       return;
     }
 
@@ -431,7 +420,7 @@ export default function IncidentDetailPage() {
                     disabled={isUpdatingIncident || !canUpdateIncident}
                     onChange={(event) => setSelectedStatus(event.target.value)}
                   >
-                    <option value="">
+                    <option value="" disabled>
                       {canUpdateIncident ? "Select status" : "No actions available"}
                     </option>
                     {availableStatusOptions.map((statusOption) => (
@@ -449,6 +438,7 @@ export default function IncidentDetailPage() {
                   </label>
                   <textarea
                     id="adminComment"
+                    ref={adminCommentTextareaRef}
                     rows="5"
                     placeholder={
                       canUpdateIncident

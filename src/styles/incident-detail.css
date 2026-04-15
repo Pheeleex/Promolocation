@@ -221,8 +221,9 @@
 }
 
 .incident-input-group textarea {
-  resize: vertical;
+  resize: none;
   min-height: 132px;
+  overflow: hidden;
   line-height: 1.6;
 }
 

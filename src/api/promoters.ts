@@ -32,9 +32,10 @@ export async function createPromoter(
 ): Promise<CreatePromoterResponse> {
   const formData = new FormData();
   formData.append("promoter_id", payload.promoter_id);
-  formData.append("first_name", payload.first_name ?? "");
-  formData.append("last_name", payload.last_name ?? "");
+  formData.append("first_name", payload.first_name);
+  formData.append("last_name", payload.last_name);
   formData.append("promo_code", payload.promo_code);
+  formData.append("avatar", payload.avatar);
   formData.append("promo_URL", payload.promo_URL);
 
   const response = await authenticatedFormPost<CreatePromoterResponse>(
