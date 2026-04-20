@@ -276,7 +276,7 @@ export default function AppLayout({
             <p>
               Are you sure you want to log out?
               <br />
-              You'll need to sign in again to access the admin panel.
+              You'll need to sign in again to access the dashboard.
             </p>
 
             <div className="modal-divider"></div>

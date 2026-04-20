@@ -77,7 +77,7 @@ export type CreatePromoterPayload = {
   promoter_id: string;
   first_name?: string;
   last_name?: string;
-  promo_code: string;
+  promo_code?: string;
   promo_URL: File;
 };
 

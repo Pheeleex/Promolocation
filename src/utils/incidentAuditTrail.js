@@ -1,4 +1,5 @@
 import { hasRegularAdminRole, hasSpecialAdminRole } from "./authAccess";
+import { REGULAR_ADMIN_TEAM_LABEL, SPECIAL_ADMIN_TEAM_LABEL } from "./uiLabels";
 
 const INCIDENT_AUDIT_TRAIL_STORAGE_KEY = "promolocationIncidentAuditTrail";
 
@@ -75,11 +76,11 @@ function sortByMostRecent(entries) {
 
 function getAuditActorLabel(userRole) {
   if (hasSpecialAdminRole(userRole)) {
-    return "Special Admin";
+    return SPECIAL_ADMIN_TEAM_LABEL;
   }
 
   if (hasRegularAdminRole(userRole)) {
-    return "Admin";
+    return REGULAR_ADMIN_TEAM_LABEL;
   }
 
   return "User";

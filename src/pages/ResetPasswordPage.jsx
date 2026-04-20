@@ -107,7 +107,7 @@ export default function ResetPasswordPage() {
         <h1>Reset Password</h1>
         <p className="auth-page-copy">
           Enter the reset code sent to your email, then choose a new password for
-          your admin account.
+          your dashboard account.
         </p>
 
         <form className="login-form" onSubmit={handleSubmit}>

@@ -9,6 +9,7 @@ import {
   useIncidents,
   useUpdateIncidentStatus,
 } from "../hooks/use-incidents";
+import { usePromoters } from "../hooks/use-promoters";
 import {
   getIncidentAuditTrailQueryKey,
   useIncidentAuditTrail,
@@ -18,6 +19,11 @@ import { useAuthStore } from "../store/auth-store";
 import { isSpecialAdminUser } from "../utils/authAccess";
 import { assetPath } from "../utils/assetPath";
 import { formatLongDate, getIncidentStatusColor } from "../utils/formatters";
+import {
+  PROMOTER_CODE_LABEL,
+  REGULAR_ADMIN_TEAM_LABEL,
+  SPECIAL_ADMIN_TEAM_LABEL,
+} from "../utils/uiLabels";
 
 const ADMIN_INCIDENT_ACTIONS = {
   Pending: ["In Progress", "On Hold", "Resolved"],
@@ -46,15 +52,15 @@ function getIncidentActionHelperCopy(currentStatus, isSpecialAdmin) {
   if (isSpecialAdmin) {
     switch (currentStatus) {
       case "Pending":
-        return "This incident is pending admin review. You can act after the admin resolves it.";
+        return `This incident is pending ${REGULAR_ADMIN_TEAM_LABEL} review. You can act after ${REGULAR_ADMIN_TEAM_LABEL} resolves it.`;
       case "In Progress":
-        return "An admin is currently working on this incident. You cannot update it right now.";
+        return `${REGULAR_ADMIN_TEAM_LABEL} is currently working on this incident. You cannot update it right now.`;
       case "On Hold":
-        return "An admin has placed this incident on hold. You cannot update it right now.";
+        return `${REGULAR_ADMIN_TEAM_LABEL} has placed this incident on hold. You cannot update it right now.`;
       case "Resolved":
-        return "Review the admin resolution and either confirm it as closed or return it as not resolved.";
+        return `Review the ${REGULAR_ADMIN_TEAM_LABEL} resolution and either confirm it as closed or return it as not resolved.`;
       case "Not Resolved":
-        return "An admin must resolve this incident again before you can take another action.";
+        return `${REGULAR_ADMIN_TEAM_LABEL} must resolve this incident again before you can take another action.`;
       case "Closed":
         return "This incident has been closed and no further action is available.";
       default:
@@ -70,7 +76,7 @@ function getIncidentActionHelperCopy(currentStatus, isSpecialAdmin) {
     case "On Hold":
       return "This incident is currently on hold. Move it back into progress, keep it on hold, or resolve it when work resumes.";
     case "Resolved":
-      return "A special admin must now review this resolution before the incident can be closed.";
+      return `${SPECIAL_ADMIN_TEAM_LABEL} must now review this resolution before the incident can be closed.`;
     case "Not Resolved":
       return "The resolution was rejected. Move the incident back to In Progress, place it on hold, or resolve it again.";
     case "Closed":
@@ -126,6 +132,7 @@ export default function IncidentDetailPage() {
   const adminCommentTextareaRef = useRef(null);
   const { incidentId } = useParams();
   const { data: incidents = [], isLoading, isError, error } = useIncidents();
+  const { data: promoters = [] } = usePromoters();
   const { mutateAsync: updateIncidentStatus, isPending: isUpdatingIncident } =
     useUpdateIncidentStatus();
   const authUser = useAuthStore((state) => state.user);
@@ -134,6 +141,9 @@ export default function IncidentDetailPage() {
   const navigate = useNavigate();
 
   const incident = incidents.find((item) => item.id === incidentId);
+  const incidentPromoterCode =
+    promoters.find((promoter) => promoter.promoterId === incident?.promoterId)
+      ?.promoterCode || "";
   const { data: auditTrail = [] } = useIncidentAuditTrail(incident);
   const statusColor = getIncidentStatusColor(incident?.status);
   const isSpecialAdmin = isSpecialAdminUser(authUser);
@@ -338,8 +348,8 @@ export default function IncidentDetailPage() {
               <h3 className="card-section-title">Incident Report:</h3>
               <div className="report-rows">
                 <div className="report-row">
-                  <span className="row-label">Promoter ID:</span>
-                  <span className="row-value">{incident.promoterId || "—"}</span>
+                  <span className="row-label">{PROMOTER_CODE_LABEL}:</span>
+                  <span className="row-value">{incidentPromoterCode || "—"}</span>
                 </div>
                 <div className="report-row">
                   <span className="row-label">Date &amp; Time:</span>
@@ -383,7 +393,7 @@ export default function IncidentDetailPage() {
                 {imageSource && !hasImageError ? (
                   <img
                     src={imageSource}
-                    alt={`Incident photo for ${incident.promoterId || incident.id}`}
+                    alt={`Incident photo for ${PROMOTER_CODE_LABEL.toLowerCase()} ${incidentPromoterCode || incident.id}`}
                     onError={() => setHasImageError(true)}
                   />
                 ) : (

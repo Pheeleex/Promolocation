@@ -8,13 +8,13 @@ import {
   updatePromoter as updatePromoterRequest,
 } from "../api/promoters";
 import AppLayout from "../components/AppLayout";
-import { usePromoters } from "../hooks/use-promoters";
 import { validateQrCodeImageUpload } from "../utils/qrCodeValidation";
+import { PROMOTER_CODE_LABEL } from "../utils/uiLabels";
 
-const PROMOTER_ID_PATTERN = /^PROMO\d+$/;
+const PROMOTER_CODE_PATTERN = /^[A-Z0-9]{5}$/;
+const PROMOTER_CODE_MAX_LENGTH = 5;
 const PROMOTER_UPLOAD_ACCEPT = ".jpg,.jpeg,.png,.svg";
 const PROMOTER_UPLOAD_MIME_TYPES = ["image/jpeg", "image/png", "image/svg+xml"];
-const PROMO_CODE_MAX_LENGTH = 5;
 
 function logAddPromoterResult(label, data) {
   if (!import.meta.env.DEV) {
@@ -25,46 +25,24 @@ function logAddPromoterResult(label, data) {
 }
 
 function normalizePromoterId(value) {
-  return value.trim().toUpperCase();
+  return value
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g, "")
+    .slice(0, PROMOTER_CODE_MAX_LENGTH);
 }
 
 function getPromoterIdValidationMessage(value) {
   const normalizedPromoterId = normalizePromoterId(value);
 
   if (!normalizedPromoterId) {
-    return "Promoter ID is required.";
+    return `${PROMOTER_CODE_LABEL} is required.`;
   }
 
-  if (!PROMOTER_ID_PATTERN.test(normalizedPromoterId)) {
-    return "Use the format PROMO followed by digits only, for example PROMO001";
-  }
-
-  return "";
-}
-
-function normalizePromoCode(value) {
-  return value.trim().toUpperCase();
-}
-
-function getPromoCodeValidationMessage(value) {
-  const normalizedPromoCode = normalizePromoCode(value);
-
-  if (!normalizedPromoCode) {
-    return "Promo code is required.";
-  }
-
-  if (normalizedPromoCode.length > PROMO_CODE_MAX_LENGTH) {
-    return `Promo code cannot be more than ${PROMO_CODE_MAX_LENGTH} characters.`;
+  if (!PROMOTER_CODE_PATTERN.test(normalizedPromoterId)) {
+    return `${PROMOTER_CODE_LABEL} must be exactly ${PROMOTER_CODE_MAX_LENGTH} letters or numbers.`;
   }
 
   return "";
-}
-
-function promoterCodeExists(promoters, promoCode) {
-  return promoters.some(
-    (promoter) =>
-      normalizePromoCode(promoter.promoterCode || "") === normalizePromoCode(promoCode),
-  );
 }
 
 function getFileSignature(file) {
@@ -77,29 +55,26 @@ function getFileSignature(file) {
 
 export default function AddPromoterPage() {
   const [promoterIdInput, setPromoterIdInput] = useState("");
-  const [promoCode, setPromoCode] = useState("");
   const [promoUrlFile, setPromoUrlFile] = useState(null);
   const [promoUrlValidationStatus, setPromoUrlValidationStatus] = useState("idle");
   const [validatedPromoUrlSignature, setValidatedPromoUrlSignature] = useState("");
   const [promoterIdError, setPromoterIdError] = useState("");
-  const [promoCodeError, setPromoCodeError] = useState("");
+  const [promoUrlFileError, setPromoUrlFileError] = useState("");
   const [isPromoterActive, setIsPromoterActive] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const promoUrlInputRef = useRef(null);
-  const { data: promoters = [], isLoading: isLoadingPromoters } = usePromoters();
   const queryClient = useQueryClient();
 
   const helperCopy =
-    "Enter one promoter ID only. It must start with PROMO and the remaining characters must be digits, for example PROMO001";
+    `Enter one promo code only. It must contain exactly ${PROMOTER_CODE_MAX_LENGTH} letters or numbers.`;
 
   const resetForm = () => {
     setPromoterIdInput("");
-    setPromoCode("");
     setPromoUrlFile(null);
     setPromoUrlValidationStatus("idle");
     setValidatedPromoUrlSignature("");
     setPromoterIdError("");
-    setPromoCodeError("");
+    setPromoUrlFileError("");
     setIsPromoterActive(true);
 
     if (promoUrlInputRef.current) {
@@ -114,6 +89,7 @@ export default function AddPromoterPage() {
       setPromoUrlFile(null);
       setPromoUrlValidationStatus("idle");
       setValidatedPromoUrlSignature("");
+      setPromoUrlFileError("");
       return;
     }
 
@@ -121,6 +97,7 @@ export default function AddPromoterPage() {
       setPromoUrlFile(selectedFile);
       setPromoUrlValidationStatus("validating");
       setValidatedPromoUrlSignature("");
+      setPromoUrlFileError("");
 
       const validationResult = await validateQrCodeImageUpload(selectedFile, {
         fileLabel: "Promo URL File",
@@ -133,6 +110,7 @@ export default function AddPromoterPage() {
         setPromoUrlFile(null);
         setPromoUrlValidationStatus("idle");
         setValidatedPromoUrlSignature("");
+        setPromoUrlFileError(validationResult.error);
         Swal.fire({
           icon: "error",
           title: "Invalid Promo URL File",
@@ -155,29 +133,22 @@ export default function AddPromoterPage() {
 
     const normalizedPromoterId = normalizePromoterId(promoterIdInput);
     const validationMessage = getPromoterIdValidationMessage(promoterIdInput);
-    const normalizedPromoCode = normalizePromoCode(promoCode);
-    const promoCodeValidationMessage = getPromoCodeValidationMessage(promoCode);
 
     setPromoterIdError("");
-    setPromoCodeError("");
+    setPromoUrlFileError("");
 
     if (validationMessage) {
       setPromoterIdError(validationMessage);
       return;
     }
 
-    if (promoCodeValidationMessage) {
-      setPromoCodeError(promoCodeValidationMessage);
-      return;
-    }
-
     if (!promoUrlFile) {
-      setPromoterIdError("Promo URL file is required.");
+      setPromoUrlFileError("Promo URL file is required.");
       return;
     }
 
     if (promoUrlValidationStatus === "validating") {
-      setPromoterIdError("Please wait while the Promo URL QR code is being validated.");
+      setPromoUrlFileError("Please wait while the Promo URL QR code is being validated.");
       return;
     }
 
@@ -195,7 +166,7 @@ export default function AddPromoterPage() {
       if (promoUrlValidationResult.error) {
         setPromoUrlValidationStatus("idle");
         setValidatedPromoUrlSignature("");
-        setPromoterIdError(promoUrlValidationResult.error);
+        setPromoUrlFileError(promoUrlValidationResult.error);
         Swal.fire({
           icon: "error",
           title: "Invalid Promo URL File",
@@ -209,33 +180,18 @@ export default function AddPromoterPage() {
       setValidatedPromoUrlSignature(promoUrlFileSignature);
     }
 
-    const promoterIdAlreadyExists = promoters.some(
-      (promoter) =>
-        promoter.promoterId.toLowerCase() === normalizedPromoterId.toLowerCase(),
-    );
-
-    if (promoterIdAlreadyExists) {
-      setPromoterIdError(`${normalizedPromoterId} already exists.`);
-      return;
-    }
-
-    if (promoterCodeExists(promoters, normalizedPromoCode)) {
-      setPromoCodeError(`Promo code ${normalizedPromoCode} already exists.`);
-      return;
-    }
-
     setIsSubmitting(true);
 
     try {
       const response = await createPromoterRequest({
         promoter_id: normalizedPromoterId,
-        promo_code: normalizedPromoCode,
+        promo_code: normalizedPromoterId,
         promo_URL: promoUrlFile,
       });
 
       logAddPromoterResult("create promoter response", {
         promoterId: normalizedPromoterId,
-        promoCode: normalizedPromoCode,
+        promoCode: normalizedPromoterId,
         response,
       });
 
@@ -305,7 +261,7 @@ export default function AddPromoterPage() {
 
       logAddPromoterResult("create promoter error", {
         promoterId: normalizedPromoterId,
-        promoCode: normalizedPromoCode,
+        promoCode: normalizedPromoterId,
         error,
       });
 
@@ -335,23 +291,24 @@ export default function AddPromoterPage() {
           <form id="addPromoterForm" onSubmit={handleSubmit}>
             <div className="form-group">
               <label htmlFor="promoterId">
-                Promoter ID <span className="required-mark">*</span>
+                {PROMOTER_CODE_LABEL} <span className="required-mark">*</span>
               </label>
               <p className="form-helper-text">{helperCopy}</p>
               <input
                 id="promoterId"
                 type="text"
                 className={`promoter-id-input${promoterIdError ? " input-error" : ""}`}
-                placeholder="PROMO001"
+                placeholder="A1B2C"
                 value={promoterIdInput}
-                disabled={isSubmitting || isLoadingPromoters}
-                autoCapitalize="characters"
+                disabled={isSubmitting}
+                maxLength={PROMOTER_CODE_MAX_LENGTH}
+                pattern="[A-Za-z0-9]{5}"
                 autoCorrect="off"
                 spellCheck="false"
                 aria-invalid={Boolean(promoterIdError)}
                 aria-describedby={promoterIdError ? "promoterId-error" : "promoterId-help"}
                 onChange={(event) => {
-                  setPromoterIdInput(event.target.value.toUpperCase());
+                  setPromoterIdInput(normalizePromoterId(event.target.value));
                   setPromoterIdError("");
                 }}
               />
@@ -361,43 +318,7 @@ export default function AddPromoterPage() {
                 </p>
               ) : (
                 <p id="promoterId-help" className="form-meta-text">
-                  {isLoadingPromoters
-                    ? "Checking existing promoter IDs..."
-                    : ""}
-                </p>
-              )}
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="promoCode">
-                Promo Code <span className="required-mark">*</span>
-              </label>
-              <input
-                id="promoCode"
-                type="text"
-                className={`form-input${promoCodeError ? " input-error" : ""}`}
-                placeholder="WINTR"
-                value={promoCode}
-                maxLength={PROMO_CODE_MAX_LENGTH}
-                disabled={isSubmitting || isLoadingPromoters}
-                aria-invalid={Boolean(promoCodeError)}
-                aria-describedby={promoCodeError ? "promoCode-error" : "promoCode-help"}
-                onChange={(event) => {
-                  setPromoCode(
-                    event.target.value.toUpperCase().slice(0, PROMO_CODE_MAX_LENGTH),
-                  );
-                  setPromoCodeError("");
-                }}
-              />
-              {promoCodeError ? (
-                <p id="promoCode-error" className="form-error-text" role="alert">
-                  {promoCodeError}
-                </p>
-              ) : (
-                <p id="promoCode-help" className="form-meta-text">
-                  {isLoadingPromoters
-                    ? "Checking existing promoter codes..."
-                    : `Use up to ${PROMO_CODE_MAX_LENGTH} characters. Promo codes must be unique.`}
+                  {`Use exactly ${PROMOTER_CODE_MAX_LENGTH} letters or numbers.`}
                 </p>
               )}
             </div>
@@ -412,9 +333,7 @@ export default function AddPromoterPage() {
                 type="file"
                 className="file-input"
                 accept={PROMOTER_UPLOAD_ACCEPT}
-                disabled={
-                  isSubmitting || isLoadingPromoters || promoUrlValidationStatus === "validating"
-                }
+                disabled={isSubmitting || promoUrlValidationStatus === "validating"}
                 onChange={handlePromoUrlChange}
               />
               <p className="form-meta-text">
@@ -424,6 +343,11 @@ export default function AddPromoterPage() {
                     : `${promoUrlFile.name} - QR code verified.`
                   : "Upload a JPG, PNG, or SVG QR code up to 5MB for promo_URL."}
               </p>
+              {promoUrlFileError ? (
+                <p className="form-error-text" role="alert">
+                  {promoUrlFileError}
+                </p>
+              ) : null}
             </div>
 
             <div
@@ -440,7 +364,7 @@ export default function AddPromoterPage() {
                 <input
                   type="checkbox"
                   checked={isPromoterActive}
-                  disabled={isSubmitting || isLoadingPromoters}
+                  disabled={isSubmitting}
                   onChange={(event) => setIsPromoterActive(event.target.checked)}
                   aria-label="Activate promoter after creation"
                 />
@@ -451,9 +375,7 @@ export default function AddPromoterPage() {
             <button
               type="submit"
               className="submit-btn"
-              disabled={
-                isSubmitting || isLoadingPromoters || promoUrlValidationStatus === "validating"
-              }
+              disabled={isSubmitting || promoUrlValidationStatus === "validating"}
             >
               {isSubmitting
                 ? "Saving Promoter..."

@@ -99,7 +99,7 @@ export default function ForgotPasswordPage() {
 
         <h1>Forgot Password</h1>
         <p className="auth-page-copy">
-          Enter the email linked to your admin account. If the account exists, a
+          Enter the email linked to your dashboard account. If the account exists, a
           reset code will be sent there.
         </p>
         {isCooldownActive ? (
@@ -116,7 +116,7 @@ export default function ForgotPasswordPage() {
           <div className="auth-success-panel">
             <p className="auth-success-title">Check your email</p>
             <p className="auth-success-copy">
-              If <strong>{submittedEmail}</strong> belongs to an admin account, the
+              If <strong>{submittedEmail}</strong> belongs to a dashboard account, the
               reset instructions are on the way.
             </p>
             <div className="auth-success-actions">

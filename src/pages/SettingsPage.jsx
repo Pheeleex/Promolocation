@@ -7,11 +7,7 @@ import PasswordField from "../components/PasswordField";
 import { useAuth } from "../context/AuthContext";
 import { useChangePassword } from "../hooks/use-admin-auth";
 import { usePasswordAttemptLimit } from "../hooks/use-password-attempt-limit";
-import { isSpecialAdminUser } from "../utils/authAccess";
-
-function getRoleLabel(authUser) {
-  return isSpecialAdminUser(authUser) ? "Special Admin" : "Admin";
-}
+import { getUserRoleDisplayName } from "../utils/uiLabels";
 
 export default function SettingsPage() {
   const [currentPassword, setCurrentPassword] = useState("");
@@ -35,7 +31,7 @@ export default function SettingsPage() {
   const displayName =
     authUser?.fullname ||
     [authUser?.first_name, authUser?.last_name].filter(Boolean).join(" ").trim() ||
-    "Admin User";
+    "Dashboard User";
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -124,8 +120,8 @@ export default function SettingsPage() {
           <p className="settings-eyebrow">Account Settings</p>
           <h1>Password &amp; Security</h1>
           <p>
-            Update your admin dashboard password here. After a successful change,
-            you will be asked to sign in again.
+            Update your dashboard password here. After a successful change, you
+            will be asked to sign in again.
           </p>
         </section>
 
@@ -142,7 +138,7 @@ export default function SettingsPage() {
             </div>
             <div className="settings-meta-item">
               <span className="settings-meta-label">Role</span>
-              <strong>{getRoleLabel(authUser)}</strong>
+              <strong>{getUserRoleDisplayName(authUser)}</strong>
             </div>
             <div className="settings-meta-item">
               <span className="settings-meta-label">Email Address</span>

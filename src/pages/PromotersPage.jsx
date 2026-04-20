@@ -10,6 +10,7 @@ import {
   useUpdatePromoter,
 } from "../hooks/use-promoters";
 import { getPromoterStatusColor } from "../utils/formatters";
+import { PROMOTER_CODE_LABEL } from "../utils/uiLabels";
 
 const PAGE_SIZE = 10;
 
@@ -59,7 +60,7 @@ export default function PromotersPage() {
   } = useResetPromoterPassword();
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(0);
-  const [sortKey, setSortKey] = useState("promoterId");
+  const [sortKey, setSortKey] = useState("promoterCode");
   const [sortDirection, setSortDirection] = useState("asc");
   const [editingPromoter, setEditingPromoter] = useState(null);
   const [editStatus, setEditStatus] = useState(false);
@@ -78,7 +79,7 @@ export default function PromotersPage() {
   const normalizedSearchTerm = searchTerm.trim().toLowerCase();
 
   const filteredPromoters = promoters.filter((promoter) =>
-    [promoter.promoterId, promoter.promoterCode, promoter.fullName, promoter.status]
+    [promoter.promoterCode, promoter.fullName, promoter.status]
       .join(" ")
       .toLowerCase()
       .includes(normalizedSearchTerm),
@@ -169,9 +170,11 @@ export default function PromotersPage() {
   };
 
   const handleResetPassword = async (promoter) => {
+    const displayedPromoterCode = promoter.promoterCode || "this promoter";
+
     const confirmation = await Swal.fire({
       icon: "question",
-      title: `Reset ${promoter.promoterId} password?`,
+      title: `Reset password for ${displayedPromoterCode}?`,
       text: "This will send a password reset request for this promoter.",
       showCancelButton: true,
       confirmButtonText: "Reset Password",
@@ -195,7 +198,7 @@ export default function PromotersPage() {
         title: "Password Reset Sent",
         text:
           response.message ||
-          `Password reset request sent for ${promoter.promoterId}.`,
+          `Password reset request sent for ${displayedPromoterCode}.`,
         confirmButtonColor: "#22c55e",
       });
     } catch (resetError) {
@@ -221,7 +224,7 @@ export default function PromotersPage() {
               <input
                 type="text"
                 value={searchTerm}
-                placeholder="Search promoter ID or code..."
+                placeholder="Search promo code..."
                 onChange={(event) => setSearchTerm(event.target.value)}
               />
             </div>
@@ -235,19 +238,10 @@ export default function PromotersPage() {
                 <th className="sortable-header">
                   <button
                     type="button"
-                    className={`sortable-label is-button${sortKey === "promoterId" ? ` is-${sortDirection}` : ""}`}
-                    onClick={() => handleSort("promoterId")}
-                  >
-                    Promoter ID
-                  </button>
-                </th>
-                <th className="sortable-header">
-                  <button
-                    type="button"
                     className={`sortable-label is-button${sortKey === "promoterCode" ? ` is-${sortDirection}` : ""}`}
                     onClick={() => handleSort("promoterCode")}
                   >
-                    Promoter Code
+                    {PROMOTER_CODE_LABEL}
                   </button>
                 </th>
                 <th className="sortable-header">
@@ -265,13 +259,13 @@ export default function PromotersPage() {
             <tbody>
               {isLoading ? (
                 <tr>
-                  <td colSpan="4">
+                  <td colSpan="3">
                     <div className="empty-state">Loading promoters...</div>
                   </td>
                 </tr>
               ) : isError ? (
                 <tr>
-                  <td colSpan="4">
+                  <td colSpan="3">
                     <div className="empty-state">
                       {error?.message || "Unable to load promoters."}
                     </div>
@@ -280,8 +274,7 @@ export default function PromotersPage() {
               ) : paginatedPromoters.length ? (
                 paginatedPromoters.map((promoter) => (
                   <tr key={promoter.id}>
-                    <td>{promoter.promoterId}</td>
-                    <td>{promoter.promoterCode || "--"}</td>
+                    <td>{promoter.promoterCode || "—"}</td>
                     <td>
                       <span
                         style={{
@@ -308,7 +301,7 @@ export default function PromotersPage() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan="4">
+                  <td colSpan="3">
                     <div className="empty-state">No promoters match your search.</div>
                   </td>
                 </tr>
@@ -339,11 +332,11 @@ export default function PromotersPage() {
         </div>
         <form onSubmit={handleEditSubmit}>
           <div className="form-group">
-            <label htmlFor="editId">Promoter ID</label>
+            <label htmlFor="editId">{PROMOTER_CODE_LABEL}</label>
             <input
               id="editId"
               type="text"
-              value={editingPromoter?.promoterId || ""}
+              value={editingPromoter?.promoterCode || ""}
               readOnly
             />
           </div>
@@ -369,7 +362,7 @@ export default function PromotersPage() {
             <div>
               <p className="edit-promoter-panel-title">Password</p>
               <p className="edit-promoter-panel-copy">
-                Trigger a password reset for {editingPromoter?.promoterId || "this promoter"}.
+                Trigger a password reset for {editingPromoter?.promoterCode || "this promoter"}.
               </p>
             </div>
             <button

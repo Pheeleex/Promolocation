@@ -7,6 +7,7 @@ import {
   getMissingIncidentFieldLabels,
   getMissingIncidentFieldsAlertConfig,
 } from "../utils/incidentFormValidation";
+import { PROMOTER_CODE_LABEL } from "../utils/uiLabels";
 import Swal from "sweetalert2";
 
 export default function CreateIncidentForm({ onCancel, onSuccess }) {
@@ -85,7 +86,7 @@ export default function CreateIncidentForm({ onCancel, onSuccess }) {
       Swal.fire({
         icon: "error",
         title: "Missing Identification",
-        text: "Your account information is incomplete (missing User ID or Promoter ID). Please contact support.",
+        text: `Your account information is incomplete (missing User ID or ${PROMOTER_CODE_LABEL}). Please contact support.`,
       });
       return;
     }

@@ -25,7 +25,7 @@ export default function IncidentHistoryPage() {
 
   const normalizedSearchTerm = searchTerm.trim().toLowerCase();
   const filteredIncidents = incidents.filter((incident) =>
-    [incident.promoterId, incident.issue, incident.category, incident.status, incident.date]
+    [incident.issue, incident.category, incident.status, incident.date]
       .join(" ")
       .toLowerCase()
       .includes(normalizedSearchTerm),
@@ -60,7 +60,7 @@ export default function IncidentHistoryPage() {
               <input
                 type="text"
                 value={searchTerm}
-                placeholder="Search incidents..."
+                placeholder="Search by issue or status..."
                 onChange={(event) => setSearchTerm(event.target.value)}
               />
             </div>
@@ -72,7 +72,6 @@ export default function IncidentHistoryPage() {
           <table id="incidentHistoryTable" className="data-table">
             <thead>
               <tr>
-                <th>Admin ID</th>
                 <th>Issue</th>
                 <th>Date &amp; Time</th>
                 <th>Status</th>
@@ -81,13 +80,13 @@ export default function IncidentHistoryPage() {
             <tbody>
               {isLoading ? (
                 <tr>
-                  <td colSpan="4">
+                  <td colSpan="3">
                     <div className="empty-state">Loading incidents...</div>
                   </td>
                 </tr>
               ) : isError ? (
                 <tr>
-                  <td colSpan="4">
+                  <td colSpan="3">
                     <div className="empty-state">
                       {error?.message || "Unable to load incidents."}
                     </div>
@@ -111,7 +110,6 @@ export default function IncidentHistoryPage() {
                         }
                       }}
                     >
-                      <td>{incident.promoterId || "—"}</td>
                       <td>{incident.issue}</td>
                       <td>{formatLongDate(incident.date)}</td>
                       <td>
@@ -130,7 +128,7 @@ export default function IncidentHistoryPage() {
                 })
               ) : (
                 <tr>
-                  <td colSpan="4">
+                  <td colSpan="3">
                     <div className="empty-state">No incidents match your search.</div>
                   </td>
                 </tr>

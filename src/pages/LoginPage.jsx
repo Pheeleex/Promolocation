@@ -7,6 +7,7 @@ import { useAuth } from "../context/AuthContext";
 import { useLogin } from "../hooks/useLogin";
 import { getDefaultAuthorizedPath, isAdminUser } from "../utils/authAccess";
 import { assetPath } from "../utils/assetPath";
+import { DASHBOARD_TEAM_LABEL, REGULAR_ADMIN_TEAM_LABEL } from "../utils/uiLabels";
 
 function getLoginErrorMessage(status) {
   switch (status) {
@@ -19,11 +20,11 @@ function getLoginErrorMessage(status) {
     case 404:
       return "No account found with that email.";
     case 406:
-      return "Account pending admin approval.";
+      return `Account pending ${REGULAR_ADMIN_TEAM_LABEL} approval.`;
     case 423:
       return "Account has been deactivated.";
     case 451:
-      return "Only admin users can sign in to this dashboard.";
+      return `Only ${DASHBOARD_TEAM_LABEL} users can sign in to this dashboard.`;
     default:
       return "Something went wrong.";
   }
@@ -111,7 +112,7 @@ export default function LoginPage() {
           />
         </div>
 
-        <h1>Admin Login</h1>
+        <h1>Dashboard Login</h1>
 
         <form className="login-form" onSubmit={handleSubmit}>
           <div className="input-group">
