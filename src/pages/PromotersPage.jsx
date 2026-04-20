@@ -9,7 +9,7 @@ import {
   useResetPromoterPassword,
   useUpdatePromoter,
 } from "../hooks/use-promoters";
-import { getPromoterStatusColor } from "../utils/formatters";
+import { formatLongDate, getPromoterStatusColor } from "../utils/formatters";
 import { PROMOTER_CODE_LABEL } from "../utils/uiLabels";
 
 const PAGE_SIZE = 10;
@@ -50,6 +50,14 @@ function ResetPasswordIcon() {
   );
 }
 
+function getPromoterSortValue(promoter, sortKey) {
+  if (sortKey === "createdOn") {
+    return promoter.createdOnTime || 0;
+  }
+
+  return String(promoter[sortKey] ?? "").toLowerCase();
+}
+
 export default function PromotersPage() {
   const { data: fetchedPromoters = [], isLoading, isError, error } = usePromoters();
   const { mutateAsync: updatePromoter, isPending: isUpdatingPromoter } =
@@ -60,8 +68,8 @@ export default function PromotersPage() {
   } = useResetPromoterPassword();
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(0);
-  const [sortKey, setSortKey] = useState("promoterCode");
-  const [sortDirection, setSortDirection] = useState("asc");
+  const [sortKey, setSortKey] = useState("createdOn");
+  const [sortDirection, setSortDirection] = useState("desc");
   const [editingPromoter, setEditingPromoter] = useState(null);
   const [editStatus, setEditStatus] = useState(false);
   const [resettingPromoterId, setResettingPromoterId] = useState(null);
@@ -86,8 +94,8 @@ export default function PromotersPage() {
   );
 
   const sortedPromoters = [...filteredPromoters].sort((left, right) => {
-    const leftValue = left[sortKey].toLowerCase();
-    const rightValue = right[sortKey].toLowerCase();
+    const leftValue = getPromoterSortValue(left, sortKey);
+    const rightValue = getPromoterSortValue(right, sortKey);
 
     if (leftValue < rightValue) {
       return sortDirection === "asc" ? -1 : 1;
@@ -126,7 +134,7 @@ export default function PromotersPage() {
     }
 
     setSortKey(key);
-    setSortDirection("asc");
+    setSortDirection(key === "createdOn" ? "desc" : "asc");
   };
 
   const openEditModal = (promoter) => {
@@ -253,19 +261,28 @@ export default function PromotersPage() {
                     Status
                   </button>
                 </th>
+                <th className="sortable-header">
+                  <button
+                    type="button"
+                    className={`sortable-label is-button${sortKey === "createdOn" ? ` is-${sortDirection}` : ""}`}
+                    onClick={() => handleSort("createdOn")}
+                  >
+                    Date Added
+                  </button>
+                </th>
                 <th className="actions-column">Action</th>
               </tr>
             </thead>
             <tbody>
               {isLoading ? (
                 <tr>
-                  <td colSpan="3">
+                  <td colSpan="4">
                     <div className="empty-state">Loading promoters...</div>
                   </td>
                 </tr>
               ) : isError ? (
                 <tr>
-                  <td colSpan="3">
+                  <td colSpan="4">
                     <div className="empty-state">
                       {error?.message || "Unable to load promoters."}
                     </div>
@@ -285,6 +302,7 @@ export default function PromotersPage() {
                         {promoter.status}
                       </span>
                     </td>
+                    <td>{formatLongDate(promoter.createdOn)}</td>
                     <td className="actions-column">
                       <div className="action-icons">
                         <button
@@ -301,7 +319,7 @@ export default function PromotersPage() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan="3">
+                  <td colSpan="4">
                     <div className="empty-state">No promoters match your search.</div>
                   </td>
                 </tr>

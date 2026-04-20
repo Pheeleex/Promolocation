@@ -16,7 +16,7 @@ export type RawPromoter = {
   forgotten_password_time: string | null;
   remember_selector: string | null;
   remember_code: string | null;
-  created_on: string;
+  created_on: string | number | null;
   updated_at: string | null;
   last_login: string | null;
   active: string;
@@ -61,6 +61,8 @@ export type Promoter = {
   role: string;
   active: boolean;
   status: PromoterStatus;
+  createdOn: string;
+  createdOnTime: number;
   address: string;
   designation: string | null;
   region: string;

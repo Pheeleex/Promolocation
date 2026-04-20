@@ -6,8 +6,38 @@ import {
 } from "./incidents";
 import { Promoter, PromoterStatus, RawPromoter } from "./promoters";
 
+function normalizeDateTimeValue(value: RawPromoter["created_on"]) {
+  const text = value == null ? "" : String(value).trim();
+
+  if (!text) {
+    return {
+      dateTime: "",
+      time: 0,
+    };
+  }
+
+  if (/^\d+$/.test(text)) {
+    const numericValue = Number(text);
+    const time = text.length <= 10 ? numericValue * 1000 : numericValue;
+
+    return {
+      dateTime: Number.isFinite(time) ? new Date(time).toISOString() : "",
+      time: Number.isFinite(time) ? time : 0,
+    };
+  }
+
+  const dateTime = text.replace(" ", "T");
+  const time = Date.parse(dateTime);
+
+  return {
+    dateTime,
+    time: Number.isNaN(time) ? 0 : time,
+  };
+}
+
 export function mapPromoter(user: RawPromoter): Promoter {
   const status: PromoterStatus = user.active === "1" ? "Active" : "Inactive";
+  const createdOn = normalizeDateTimeValue(user.created_on);
 
   return {
     id: user.id,
@@ -21,6 +51,8 @@ export function mapPromoter(user: RawPromoter): Promoter {
     role: user.user_role,
     active: status === "Active",
     status,
+    createdOn: createdOn.dateTime,
+    createdOnTime: createdOn.time,
     address: user.address,
     designation: user.designation,
     region: user.region.replace(/\s+/g, " ").trim(),
