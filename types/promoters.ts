@@ -79,6 +79,7 @@ export type CreatePromoterPayload = {
   promoter_id: string;
   first_name?: string;
   last_name?: string;
+  brand?: string;
   promo_code?: string;
   promo_URL: File;
 };
@@ -87,6 +88,7 @@ export type UpdatePromoterStatusValue = "active" | "inactive";
 
 export type UpdatePromoterPayload = {
   user_id: string;
+  user_role?: string;
   promoter_id: string;
   first_name: string;
   last_name: string;

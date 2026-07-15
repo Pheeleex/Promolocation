@@ -8,13 +8,20 @@ import {
   updatePromoter as updatePromoterRequest,
 } from "../api/promoters";
 import AppLayout from "../components/AppLayout";
+import { useSystemBrands } from "../hooks/use-promoters-brands";
 import { validateQrCodeImageUpload } from "../utils/qrCodeValidation";
 import { PROMOTER_CODE_LABEL } from "../utils/uiLabels";
 
 const PROMOTER_CODE_PATTERN = /^[A-Z0-9]{5}$/;
 const PROMOTER_CODE_MAX_LENGTH = 5;
-const PROMOTER_UPLOAD_ACCEPT = ".jpg,.jpeg,.png,.svg";
-const PROMOTER_UPLOAD_MIME_TYPES = ["image/jpeg", "image/png", "image/svg+xml"];
+const PROMOTER_UPLOAD_ACCEPT = ".jpg,.jpeg,.png,.gif,.webp";
+const PROMOTER_UPLOAD_MIME_TYPES = [
+  "image/jpeg",
+  "image/png",
+  "image/gif",
+  "image/webp",
+];
+const PROMOTER_UPLOAD_EXTENSIONS = ["jpg", "jpeg", "png", "gif", "webp"];
 
 function logAddPromoterResult(label, data) {
   if (!import.meta.env.DEV) {
@@ -55,6 +62,7 @@ function getFileSignature(file) {
 
 export default function AddPromoterPage() {
   const [promoterIdInput, setPromoterIdInput] = useState("");
+  const [brandName, setBrandName] = useState("");
   const [promoUrlFile, setPromoUrlFile] = useState(null);
   const [promoUrlValidationStatus, setPromoUrlValidationStatus] = useState("idle");
   const [validatedPromoUrlSignature, setValidatedPromoUrlSignature] = useState("");
@@ -64,12 +72,18 @@ export default function AddPromoterPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const promoUrlInputRef = useRef(null);
   const queryClient = useQueryClient();
+  const {
+    data: systemBrands = [],
+    isLoading: isLoadingSystemBrands,
+    isError: isSystemBrandsError,
+  } = useSystemBrands();
 
   const helperCopy =
     `Enter one promo code only. It must contain exactly ${PROMOTER_CODE_MAX_LENGTH} letters or numbers.`;
 
   const resetForm = () => {
     setPromoterIdInput("");
+    setBrandName("");
     setPromoUrlFile(null);
     setPromoUrlValidationStatus("idle");
     setValidatedPromoUrlSignature("");
@@ -102,7 +116,7 @@ export default function AddPromoterPage() {
       const validationResult = await validateQrCodeImageUpload(selectedFile, {
         fileLabel: "Promo URL File",
         allowedMimeTypes: PROMOTER_UPLOAD_MIME_TYPES,
-        allowedExtensions: ["jpg", "jpeg", "png", "svg"],
+        allowedExtensions: PROMOTER_UPLOAD_EXTENSIONS,
       });
 
       if (validationResult.error) {
@@ -132,6 +146,7 @@ export default function AddPromoterPage() {
     event.preventDefault();
 
     const normalizedPromoterId = normalizePromoterId(promoterIdInput);
+    const trimmedBrandName = brandName.trim();
     const validationMessage = getPromoterIdValidationMessage(promoterIdInput);
 
     setPromoterIdError("");
@@ -160,7 +175,7 @@ export default function AddPromoterPage() {
       const promoUrlValidationResult = await validateQrCodeImageUpload(promoUrlFile, {
         fileLabel: "Promo URL File",
         allowedMimeTypes: PROMOTER_UPLOAD_MIME_TYPES,
-        allowedExtensions: ["jpg", "jpeg", "png", "svg"],
+        allowedExtensions: PROMOTER_UPLOAD_EXTENSIONS,
       });
 
       if (promoUrlValidationResult.error) {
@@ -185,6 +200,7 @@ export default function AddPromoterPage() {
     try {
       const response = await createPromoterRequest({
         promoter_id: normalizedPromoterId,
+        brand: trimmedBrandName || undefined,
         promo_code: normalizedPromoterId,
         promo_URL: promoUrlFile,
       });
@@ -227,6 +243,7 @@ export default function AddPromoterPage() {
 
         const updateResponse = await updatePromoterRequest({
           user_id: createdPromoterId,
+          user_role: "user",
           promoter_id: normalizedPromoterId,
           first_name: createdFirstName,
           last_name: createdLastName,
@@ -324,6 +341,30 @@ export default function AddPromoterPage() {
             </div>
 
             <div className="form-group">
+              <label htmlFor="brandName">Brand Name</label>
+              <select
+                id="brandName"
+                value={brandName}
+                disabled={isSubmitting || isLoadingSystemBrands}
+                onChange={(event) => setBrandName(event.target.value)}
+              >
+                <option value="">
+                  {isLoadingSystemBrands ? "Loading brands..." : "No brand selected"}
+                </option>
+                {systemBrands.map((brand) => (
+                  <option key={brand.id} value={brand.name}>
+                    {brand.name}
+                  </option>
+                ))}
+              </select>
+              <p className="form-meta-text">
+                {isSystemBrandsError
+                  ? "Unable to load brand names right now. You can still create without one."
+                  : "Optional. Select a brand if the promoter should start with one."}
+              </p>
+            </div>
+
+            <div className="form-group">
               <label htmlFor="promoUrlFile">
                 Promo URL File <span className="required-mark">*</span>
               </label>
@@ -341,7 +382,7 @@ export default function AddPromoterPage() {
                   ? promoUrlValidationStatus === "validating"
                     ? `${promoUrlFile.name} - checking QR code...`
                     : `${promoUrlFile.name} - QR code verified.`
-                  : "Upload a JPG, PNG, or SVG QR code up to 5MB for promo_URL."}
+                  : "Upload a JPG, JPEG, PNG, GIF, or WEBP QR code up to 5MB for promo_URL."}
               </p>
               {promoUrlFileError ? (
                 <p className="form-error-text" role="alert">

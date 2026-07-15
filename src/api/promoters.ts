@@ -9,7 +9,11 @@ import {
   UpdatePromoterPayload,
   UpdatePromoterResponse,
 } from "../../types/promoters";
-import { authenticatedFormPost, authenticatedPost } from "./loggedIn-client";
+import {
+  authenticatedAdminPost,
+  authenticatedFormPost,
+  authenticatedPost,
+} from "./loggedIn-client";
 
 const GET_USERS_PATH = "/get_users";
 const CREATE_PROMOTER_PATH = "/create_promoter";
@@ -35,6 +39,11 @@ export async function createPromoter(
   formData.append("first_name", payload.first_name ?? "");
   formData.append("last_name", payload.last_name ?? "");
   formData.append("promo_code", payload.promo_code ?? payload.promoter_id);
+
+  if (payload.brand?.trim()) {
+    formData.append("brand", payload.brand.trim());
+  }
+
   formData.append("promo_URL", payload.promo_URL);
 
   const response = await authenticatedFormPost<CreatePromoterResponse>(
@@ -52,7 +61,7 @@ export async function createPromoter(
 export async function updatePromoter(
   payload: UpdatePromoterPayload
 ): Promise<UpdatePromoterResponse> {
-  const response = await authenticatedPost<UpdatePromoterResponse>(
+  const response = await authenticatedAdminPost<UpdatePromoterResponse>(
     UPDATE_PROMOTER_PATH,
     payload,
   );

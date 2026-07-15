@@ -128,3 +128,37 @@ export async function authenticatedAdminPost<T>(
     }),
   );
 }
+
+export async function tokenPost<T>(
+  url: string,
+  body: Record<string, unknown> = {},
+): Promise<T> {
+  return apiClient<T>(url, {
+    method: "POST",
+    body: JSON.stringify({
+      token: API_TOKEN,
+      ...body,
+    }),
+  });
+}
+
+export async function authenticatedAdminFormPost<T>(
+  url: string,
+  formData?: FormData,
+): Promise<T> {
+  const jwt = getAccessToken();
+  const requestBody = formData ?? new FormData();
+
+  requestBody.set("token", API_TOKEN);
+  requestBody.set("jwt", jwt);
+
+  return runAuthenticatedRequest(() =>
+    apiClient<T>(url, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${jwt}`,
+      },
+      body: requestBody,
+    }),
+  );
+}
