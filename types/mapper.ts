@@ -4,9 +4,10 @@ import {
   RawIncident,
   RawIncidentAuditEntry,
 } from "./incidents";
+import { mapPromoterBrand } from "./promoter-brands";
 import { Promoter, PromoterStatus, RawPromoter } from "./promoters";
 
-function normalizeDateTimeValue(value: RawPromoter["created_on"]) {
+function normalizeDateTimeValue(value: string | number | null | undefined) {
   const text = value == null ? "" : String(value).trim();
 
   if (!text) {
@@ -35,9 +36,26 @@ function normalizeDateTimeValue(value: RawPromoter["created_on"]) {
   };
 }
 
+function getNewestDateTimeValue(
+  values: Array<string | number | null | undefined>,
+) {
+  return values
+    .map(normalizeDateTimeValue)
+    .reduce(
+      (newest, current) => (current.time > newest.time ? current : newest),
+      { dateTime: "", time: 0 },
+    );
+}
+
 export function mapPromoter(user: RawPromoter): Promoter {
   const status: PromoterStatus = user.active === "1" ? "Active" : "Inactive";
   const createdOn = normalizeDateTimeValue(user.created_on);
+  const rawBrands = Array.isArray(user.brands) ? user.brands : [];
+  const brands = rawBrands.map(mapPromoterBrand);
+  const lastUpdated = getNewestDateTimeValue([
+    user.updated_at,
+    ...rawBrands.flatMap((brand) => [brand.updated_at, brand.last_updated]),
+  ]);
 
   return {
     id: user.id,
@@ -53,6 +71,8 @@ export function mapPromoter(user: RawPromoter): Promoter {
     status,
     createdOn: createdOn.dateTime,
     createdOnTime: createdOn.time,
+    lastUpdated: lastUpdated.dateTime,
+    lastUpdatedTime: lastUpdated.time,
     address: user.address,
     designation: user.designation,
     region: user.region.replace(/\s+/g, " ").trim(),
@@ -61,6 +81,7 @@ export function mapPromoter(user: RawPromoter): Promoter {
     image: user.image,
     emergencyContact: user.emergency_contact,
     profileStatus: user.profile_status === "Yes",
+    brands,
   };
 }
 

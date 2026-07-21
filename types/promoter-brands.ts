@@ -2,17 +2,18 @@ export type ApiId = string | number;
 
 export type RawPromoterBrand = {
   id: ApiId;
-  user_id: ApiId;
+  user_id?: ApiId | null;
   promoter_id: string;
   brand: string;
-  promo_URL: string | null;
-  created_at: string | null;
+  promo_URL?: string | null;
+  created_at?: string | null;
   updated_at?: string | null;
+  last_updated?: string | null;
 };
 
 export type PromoterBrand = {
   id: ApiId;
-  userId: ApiId;
+  userId: ApiId | null;
   promoterId: string;
   name: string;
   promoUrl: string | null;
@@ -30,14 +31,6 @@ export type SystemBrand = {
   id: ApiId;
   name: string;
   createdAt: string | null;
-};
-
-export type GetPromoterBrandsResponse = {
-  status: number;
-  message: string;
-  promoter_id?: string;
-  total: number;
-  brands: RawPromoterBrand[];
 };
 
 export type GetSystemBrandsResponse = {
@@ -78,11 +71,11 @@ export function mapPromoterBrand(
 ): PromoterBrand {
   return {
     id: brand.id,
-    userId: brand.user_id,
+    userId: brand.user_id ?? null,
     promoterId: brand.promoter_id,
     name: brand.brand,
-    promoUrl: brand.promo_URL,
-    createdAt: brand.created_at,
-    updatedAt: brand.updated_at ?? null,
+    promoUrl: brand.promo_URL ?? null,
+    createdAt: brand.created_at ?? null,
+    updatedAt: brand.updated_at ?? brand.last_updated ?? null,
   };
 }

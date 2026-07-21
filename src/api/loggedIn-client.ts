@@ -23,6 +23,7 @@ function getLogicalStatus(payload: unknown) {
   return typeof status === "number" ? status : null;
 }
 
+
 function getLogicalMessage(payload: unknown) {
   if (!payload || typeof payload !== "object" || !("message" in payload)) {
     return null;

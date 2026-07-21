@@ -2,7 +2,6 @@ import {
   BrandMutationResponse,
   CreatePromoterBrandPayload,
   DeletePromoterBrandPayload,
-  GetPromoterBrandsResponse,
   GetSystemBrandsResponse,
   PromoterBrand,
   SystemBrand,
@@ -15,7 +14,6 @@ import {
 } from "./loggedIn-client";
 import { assertApiSuccess } from "./response";
 
-const GET_PROMOTER_BRANDS_PATH = "/get_promoter_brands";
 const CREATE_PROMOTER_BRAND_PATH = "/create_promoter_brand";
 const MANAGE_PROMOTER_BRAND_PATH = "/manage_promoter_brand";
 const GET_SYSTEM_BRANDS_PATH = "/get_system_brands";
@@ -44,21 +42,6 @@ export async function getSystemBrands(): Promise<SystemBrand[]> {
     name: brand.brand,
     createdAt: brand.created_at,
   }));
-}
-
-export async function getPromoterBrands(
-  promoterId: string,
-): Promise<PromoterBrand[]> {
-  const response = assertApiSuccess(
-    await tokenPost<GetPromoterBrandsResponse>(
-      GET_PROMOTER_BRANDS_PATH,
-      {
-        promoter_id: promoterId,
-      },
-    ),
-  );
-
-  return response.brands.map(mapPromoterBrand);
 }
 
 export async function createPromoterBrand(

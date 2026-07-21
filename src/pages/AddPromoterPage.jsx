@@ -1,5 +1,5 @@
 import React from "react";
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import Swal from "sweetalert2";
 import {
@@ -22,6 +22,17 @@ const PROMOTER_UPLOAD_MIME_TYPES = [
   "image/webp",
 ];
 const PROMOTER_UPLOAD_EXTENSIONS = ["jpg", "jpeg", "png", "gif", "webp"];
+
+function createBrandAssignment() {
+  return {
+    id: `brand-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    brandName: "",
+    promoFile: null,
+    validationStatus: "idle",
+    validatedSignature: "",
+    error: "",
+  };
+}
 
 function logAddPromoterResult(label, data) {
   if (!import.meta.env.DEV) {
@@ -62,15 +73,12 @@ function getFileSignature(file) {
 
 export default function AddPromoterPage() {
   const [promoterIdInput, setPromoterIdInput] = useState("");
-  const [brandName, setBrandName] = useState("");
-  const [promoUrlFile, setPromoUrlFile] = useState(null);
-  const [promoUrlValidationStatus, setPromoUrlValidationStatus] = useState("idle");
-  const [validatedPromoUrlSignature, setValidatedPromoUrlSignature] = useState("");
+  const [brandAssignments, setBrandAssignments] = useState(() => [
+    createBrandAssignment(),
+  ]);
   const [promoterIdError, setPromoterIdError] = useState("");
-  const [promoUrlFileError, setPromoUrlFileError] = useState("");
   const [isPromoterActive, setIsPromoterActive] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const promoUrlInputRef = useRef(null);
   const queryClient = useQueryClient();
   const {
     data: systemBrands = [],
@@ -80,119 +88,216 @@ export default function AddPromoterPage() {
 
   const helperCopy =
     `Enter one promo code only. It must contain exactly ${PROMOTER_CODE_MAX_LENGTH} letters or numbers.`;
+  const isValidatingBrandQr = brandAssignments.some(
+    (assignment) => assignment.validationStatus === "validating",
+  );
+  const canAddBrandAssignment = brandAssignments.every(
+    (assignment) =>
+      assignment.brandName.trim() &&
+      assignment.promoFile &&
+      assignment.validationStatus !== "validating",
+  );
 
   const resetForm = () => {
     setPromoterIdInput("");
-    setBrandName("");
-    setPromoUrlFile(null);
-    setPromoUrlValidationStatus("idle");
-    setValidatedPromoUrlSignature("");
+    setBrandAssignments([createBrandAssignment()]);
     setPromoterIdError("");
-    setPromoUrlFileError("");
     setIsPromoterActive(true);
-
-    if (promoUrlInputRef.current) {
-      promoUrlInputRef.current.value = "";
-    }
   };
 
-  const handlePromoUrlChange = (event) => {
-    const selectedFile = event.target.files?.[0];
+  const updateBrandAssignment = (assignmentId, updates) => {
+    setBrandAssignments((currentAssignments) =>
+      currentAssignments.map((assignment) =>
+        assignment.id === assignmentId ? { ...assignment, ...updates } : assignment,
+      ),
+    );
+  };
 
-    if (!selectedFile) {
-      setPromoUrlFile(null);
-      setPromoUrlValidationStatus("idle");
-      setValidatedPromoUrlSignature("");
-      setPromoUrlFileError("");
+  const addBrandAssignment = () => {
+    if (!canAddBrandAssignment) {
       return;
     }
 
-    const validateSelectedPromoUrlFile = async () => {
-      setPromoUrlFile(selectedFile);
-      setPromoUrlValidationStatus("validating");
-      setValidatedPromoUrlSignature("");
-      setPromoUrlFileError("");
+    setBrandAssignments((currentAssignments) => [
+      ...currentAssignments,
+      createBrandAssignment(),
+    ]);
+  };
 
-      const validationResult = await validateQrCodeImageUpload(selectedFile, {
-        fileLabel: "Promo URL File",
-        allowedMimeTypes: PROMOTER_UPLOAD_MIME_TYPES,
-        allowedExtensions: PROMOTER_UPLOAD_EXTENSIONS,
+  const removeBrandAssignment = (assignmentId) => {
+    setBrandAssignments((currentAssignments) => {
+      if (currentAssignments.length === 1) {
+        return currentAssignments;
+      }
+
+      return currentAssignments.filter((assignment) => assignment.id !== assignmentId);
+    });
+  };
+
+  const validateBrandAssignmentFile = async (file) => {
+    const validationResult = await validateQrCodeImageUpload(file, {
+      fileLabel: "Brand QR code",
+      allowedMimeTypes: PROMOTER_UPLOAD_MIME_TYPES,
+      allowedExtensions: PROMOTER_UPLOAD_EXTENSIONS,
+    });
+
+    return validationResult.error;
+  };
+
+  const handleBrandAssignmentFileChange = (assignmentId, event) => {
+    const selectedFile = event.target.files?.[0];
+
+    if (!selectedFile) {
+      updateBrandAssignment(assignmentId, {
+        promoFile: null,
+        validationStatus: "idle",
+        validatedSignature: "",
+        error: "",
+      });
+      return;
+    }
+
+    const validateSelectedBrandFile = async () => {
+      updateBrandAssignment(assignmentId, {
+        promoFile: selectedFile,
+        validationStatus: "validating",
+        validatedSignature: "",
+        error: "",
       });
 
-      if (validationResult.error) {
+      const validationError = await validateBrandAssignmentFile(selectedFile);
+
+      if (validationError) {
         event.target.value = "";
-        setPromoUrlFile(null);
-        setPromoUrlValidationStatus("idle");
-        setValidatedPromoUrlSignature("");
-        setPromoUrlFileError(validationResult.error);
+        updateBrandAssignment(assignmentId, {
+          promoFile: null,
+          validationStatus: "idle",
+          validatedSignature: "",
+          error: validationError,
+        });
         Swal.fire({
           icon: "error",
-          title: "Invalid Promo URL File",
-          text: validationResult.error,
+          title: "Invalid Brand QR Code",
+          text: validationError,
           confirmButtonColor: "#d33",
         });
         return;
       }
 
-      setPromoUrlFile(selectedFile);
-      setPromoUrlValidationStatus("verified");
-      setValidatedPromoUrlSignature(getFileSignature(selectedFile));
+      updateBrandAssignment(assignmentId, {
+        promoFile: selectedFile,
+        validationStatus: "verified",
+        validatedSignature: getFileSignature(selectedFile),
+        error: "",
+      });
     };
 
-    void validateSelectedPromoUrlFile();
+    void validateSelectedBrandFile();
   };
 
   const handleSubmit = async (event) => {
     event.preventDefault();
 
     const normalizedPromoterId = normalizePromoterId(promoterIdInput);
-    const trimmedBrandName = brandName.trim();
     const validationMessage = getPromoterIdValidationMessage(promoterIdInput);
+    const trimmedAssignments = brandAssignments.map((assignment) => ({
+      ...assignment,
+      brandName: assignment.brandName.trim(),
+    }));
 
     setPromoterIdError("");
-    setPromoUrlFileError("");
 
     if (validationMessage) {
       setPromoterIdError(validationMessage);
       return;
     }
 
-    if (!promoUrlFile) {
-      setPromoUrlFileError("Promo URL file is required.");
+    if (trimmedAssignments.some((assignment) => assignment.validationStatus === "validating")) {
       return;
     }
 
-    if (promoUrlValidationStatus === "validating") {
-      setPromoUrlFileError("Please wait while the Promo URL QR code is being validated.");
+    const seenBrands = new Set();
+    let hasBrandAssignmentError = false;
+
+    const nextAssignments = trimmedAssignments.map((assignment) => {
+      const normalizedBrandName = assignment.brandName.toLowerCase();
+
+      if (!assignment.brandName && !assignment.promoFile) {
+        hasBrandAssignmentError = true;
+        return {
+          ...assignment,
+          error: "Select a brand and upload its QR code.",
+        };
+      }
+
+      if (!assignment.brandName) {
+        hasBrandAssignmentError = true;
+        return {
+          ...assignment,
+          error: "Brand name is required.",
+        };
+      }
+
+      if (!assignment.promoFile) {
+        hasBrandAssignmentError = true;
+        return {
+          ...assignment,
+          error: "QR code is required for this brand.",
+        };
+      }
+
+      if (seenBrands.has(normalizedBrandName)) {
+        hasBrandAssignmentError = true;
+        return {
+          ...assignment,
+          error: "This brand has already been added.",
+        };
+      }
+
+      seenBrands.add(normalizedBrandName);
+
+      return {
+        ...assignment,
+        error: "",
+      };
+    });
+
+    setBrandAssignments(nextAssignments);
+
+    if (hasBrandAssignmentError) {
       return;
     }
 
-    const promoUrlFileSignature = getFileSignature(promoUrlFile);
+    const revalidatedAssignments = [];
 
-    if (validatedPromoUrlSignature !== promoUrlFileSignature) {
-      setPromoUrlValidationStatus("validating");
+    for (const assignment of nextAssignments) {
+      const promoUrlFileSignature = getFileSignature(assignment.promoFile);
 
-      const promoUrlValidationResult = await validateQrCodeImageUpload(promoUrlFile, {
-        fileLabel: "Promo URL File",
-        allowedMimeTypes: PROMOTER_UPLOAD_MIME_TYPES,
-        allowedExtensions: PROMOTER_UPLOAD_EXTENSIONS,
-      });
+      if (assignment.validatedSignature === promoUrlFileSignature) {
+        revalidatedAssignments.push(assignment);
+        continue;
+      }
 
-      if (promoUrlValidationResult.error) {
-        setPromoUrlValidationStatus("idle");
-        setValidatedPromoUrlSignature("");
-        setPromoUrlFileError(promoUrlValidationResult.error);
-        Swal.fire({
-          icon: "error",
-          title: "Invalid Promo URL File",
-          text: promoUrlValidationResult.error,
-          confirmButtonColor: "#d33",
+      updateBrandAssignment(assignment.id, { validationStatus: "validating" });
+      const validationError = await validateBrandAssignmentFile(assignment.promoFile);
+
+      if (validationError) {
+        updateBrandAssignment(assignment.id, {
+          validationStatus: "idle",
+          validatedSignature: "",
+          error: validationError,
         });
         return;
       }
 
-      setPromoUrlValidationStatus("verified");
-      setValidatedPromoUrlSignature(promoUrlFileSignature);
+      const verifiedAssignment = {
+        ...assignment,
+        validationStatus: "verified",
+        validatedSignature: promoUrlFileSignature,
+      };
+
+      updateBrandAssignment(assignment.id, verifiedAssignment);
+      revalidatedAssignments.push(verifiedAssignment);
     }
 
     setIsSubmitting(true);
@@ -200,9 +305,11 @@ export default function AddPromoterPage() {
     try {
       const response = await createPromoterRequest({
         promoter_id: normalizedPromoterId,
-        brand: trimmedBrandName || undefined,
         promo_code: normalizedPromoterId,
-        promo_URL: promoUrlFile,
+        brands: revalidatedAssignments.map((assignment) => ({
+          brand: assignment.brandName,
+          promo_URL: assignment.promoFile,
+        })),
       });
 
       logAddPromoterResult("create promoter response", {
@@ -340,56 +447,167 @@ export default function AddPromoterPage() {
               )}
             </div>
 
-            <div className="form-group">
-              <label htmlFor="brandName">Brand Name</label>
-              <select
-                id="brandName"
-                value={brandName}
-                disabled={isSubmitting || isLoadingSystemBrands}
-                onChange={(event) => setBrandName(event.target.value)}
-              >
-                <option value="">
-                  {isLoadingSystemBrands ? "Loading brands..." : "No brand selected"}
-                </option>
-                {systemBrands.map((brand) => (
-                  <option key={brand.id} value={brand.name}>
-                    {brand.name}
-                  </option>
-                ))}
-              </select>
-              <p className="form-meta-text">
-                {isSystemBrandsError
-                  ? "Unable to load brand names right now. You can still create without one."
-                  : "Optional. Select a brand if the promoter should start with one."}
-              </p>
-            </div>
+            <section className="brand-assignments-section">
+              <div className="brand-assignments-header">
+                <div>
+                  <h2>Brands &amp; QR Codes</h2>
+                  <p>
+                    Add each brand this promoter belongs to and upload the QR code
+                    for that brand.
+                  </p>
+                </div>
+                <span>{brandAssignments.length}</span>
+              </div>
 
-            <div className="form-group">
-              <label htmlFor="promoUrlFile">
-                Promo URL File <span className="required-mark">*</span>
-              </label>
-              <input
-                id="promoUrlFile"
-                ref={promoUrlInputRef}
-                type="file"
-                className="file-input"
-                accept={PROMOTER_UPLOAD_ACCEPT}
-                disabled={isSubmitting || promoUrlValidationStatus === "validating"}
-                onChange={handlePromoUrlChange}
-              />
-              <p className="form-meta-text">
-                {promoUrlFile
-                  ? promoUrlValidationStatus === "validating"
-                    ? `${promoUrlFile.name} - checking QR code...`
-                    : `${promoUrlFile.name} - QR code verified.`
-                  : "Upload a JPG, JPEG, PNG, GIF, or WEBP QR code up to 5MB for promo_URL."}
-              </p>
-              {promoUrlFileError ? (
+              {isSystemBrandsError ? (
                 <p className="form-error-text" role="alert">
-                  {promoUrlFileError}
+                  Unable to load brand names right now.
                 </p>
               ) : null}
-            </div>
+
+              <div className="brand-assignment-list">
+                {brandAssignments.map((assignment, index) => (
+                  <div
+                    className={`brand-assignment-row ${
+                      assignment.error ? "brand-assignment-row--error" : ""
+                    }`}
+                    key={assignment.id}
+                  >
+                    <div className="brand-assignment-row-header">
+                      <h3>Brand {index + 1}</h3>
+                      {brandAssignments.length > 1 ? (
+                        <button
+                          type="button"
+                          className="brand-assignment-remove"
+                          disabled={isSubmitting}
+                          onClick={() => removeBrandAssignment(assignment.id)}
+                        >
+                          Remove
+                        </button>
+                      ) : null}
+                    </div>
+
+                    <div className="brand-assignment-grid">
+                      <div className="form-group">
+                        <label htmlFor={`brandName-${assignment.id}`}>
+                          Brand Name <span className="required-mark">*</span>
+                        </label>
+                        <select
+                          id={`brandName-${assignment.id}`}
+                          value={assignment.brandName}
+                          disabled={isSubmitting || isLoadingSystemBrands}
+                          onChange={(event) =>
+                            updateBrandAssignment(assignment.id, {
+                              brandName: event.target.value,
+                              error: "",
+                            })
+                          }
+                        >
+                          <option value="" disabled>
+                            {isLoadingSystemBrands ? "Loading brands..." : "Select brand"}
+                          </option>
+                          {systemBrands.map((brand) => (
+                            <option key={brand.id} value={brand.name}>
+                              {brand.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="form-group">
+                        <label htmlFor={`promoUrlFile-${assignment.id}`}>
+                          QR Code <span className="required-mark">*</span>
+                        </label>
+                        <input
+                          id={`promoUrlFile-${assignment.id}`}
+                          type="file"
+                          className="visually-hidden-file-input"
+                          accept={PROMOTER_UPLOAD_ACCEPT}
+                          disabled={
+                            isSubmitting || assignment.validationStatus === "validating"
+                          }
+                          onChange={(event) =>
+                            handleBrandAssignmentFileChange(assignment.id, event)
+                          }
+                        />
+                        <label
+                          htmlFor={`promoUrlFile-${assignment.id}`}
+                          className={`custom-file-control ${
+                            assignment.promoFile ? "custom-file-control--selected" : ""
+                          } ${assignment.error ? "custom-file-control--error" : ""}`}
+                        >
+                          <span className="custom-file-icon" aria-hidden="true">
+                            {assignment.promoFile ? (
+                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <path d="M4 4h6l2 2h8v14H4z" />
+                                <path d="M8 13h8" />
+                                <path d="M8 17h5" />
+                              </svg>
+                            ) : (
+                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <path d="M12 3v12" />
+                                <path d="m7 8 5-5 5 5" />
+                                <path d="M5 21h14" />
+                              </svg>
+                            )}
+                          </span>
+                          <span className="custom-file-copy">
+                            {assignment.promoFile ? "File selected" : "Choose a file"}
+                          </span>
+                          {assignment.promoFile ? (
+                            <span className="custom-file-replace">Replace</span>
+                          ) : null}
+                        </label>
+                      </div>
+                    </div>
+
+                    {assignment.error ? (
+                      <p className="brand-upload-message brand-upload-message--error" role="alert">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                          <circle cx="12" cy="12" r="10" />
+                          <path d="M12 7v6" />
+                          <path d="M12 17h.01" />
+                        </svg>
+                        {assignment.error}
+                      </p>
+                    ) : assignment.promoFile ? (
+                      <p className="brand-upload-message brand-upload-message--success">
+                        {assignment.validationStatus === "validating" ? (
+                          "Checking QR code..."
+                        ) : (
+                          <>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                              <circle cx="12" cy="12" r="10" />
+                              <path d="m8 12 3 3 5-6" />
+                            </svg>
+                            {assignment.promoFile.name} - QR code verified.
+                          </>
+                        )}
+                      </p>
+                    ) : (
+                      <p className="form-meta-text">
+                        JPG, JPEG, PNG, GIF or WEBP, up to 5MB.
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              <button
+                type="button"
+                className="brand-assignment-add"
+                disabled={!canAddBrandAssignment || isSubmitting}
+                title={
+                  canAddBrandAssignment
+                    ? "Add another brand"
+                    : "Complete the current brand and QR code first"
+                }
+                onClick={addBrandAssignment}
+              >
+                <span aria-hidden="true">+</span>
+                Add Another Brand
+              </button>
+            </section>
 
             <div
               className={`status-toggle ${isPromoterActive ? "status-toggle--active" : "status-toggle--inactive"}`}
@@ -416,11 +634,11 @@ export default function AddPromoterPage() {
             <button
               type="submit"
               className="submit-btn"
-              disabled={isSubmitting || promoUrlValidationStatus === "validating"}
+              disabled={isSubmitting || isValidatingBrandQr}
             >
               {isSubmitting
                 ? "Saving Promoter..."
-                : promoUrlValidationStatus === "validating"
+                : isValidatingBrandQr
                   ? "Validating QR Code..."
                   : "Save Promoter"}
             </button>

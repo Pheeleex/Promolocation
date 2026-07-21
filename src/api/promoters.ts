@@ -38,13 +38,26 @@ export async function createPromoter(
   formData.append("promoter_id", payload.promoter_id);
   formData.append("first_name", payload.first_name ?? "");
   formData.append("last_name", payload.last_name ?? "");
+  formData.append("phone", payload.phone ?? "");
   formData.append("promo_code", payload.promo_code ?? payload.promoter_id);
 
-  if (payload.brand?.trim()) {
-    formData.append("brand", payload.brand.trim());
-  }
+  if (payload.brands?.length) {
+    payload.brands.forEach((brandAssignment, index) => {
+      formData.append(`brands[${index}][brand]`, brandAssignment.brand.trim());
 
-  formData.append("promo_URL", payload.promo_URL);
+      if (brandAssignment.promo_URL) {
+        formData.append(`brands[${index}][promo_URL]`, brandAssignment.promo_URL);
+      }
+    });
+  } else if (payload.brand?.trim()) {
+    formData.append("brand", payload.brand.trim());
+
+    if (payload.promo_URL) {
+      formData.append("promo_URL", payload.promo_URL);
+    }
+  } else if (payload.promo_URL) {
+    formData.append("promo_URL", payload.promo_URL);
+  }
 
   const response = await authenticatedFormPost<CreatePromoterResponse>(
     CREATE_PROMOTER_PATH,

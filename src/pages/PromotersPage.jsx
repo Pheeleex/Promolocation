@@ -12,8 +12,6 @@ import {
 import {
   useCreatePromoterBrand,
   useDeletePromoterBrand,
-  usePromoterBrands,
-  usePromoterBrandsForPromoters,
   useSystemBrands,
   useUpdatePromoterBrand,
 } from "../hooks/use-promoters-brands";
@@ -84,6 +82,10 @@ function getPromoterSortValue(promoter, sortKey) {
     return promoter.createdOnTime || 0;
   }
 
+  if (sortKey === "lastUpdated") {
+    return promoter.lastUpdatedTime || 0;
+  }
+
   return String(promoter[sortKey] ?? "").toLowerCase();
 }
 
@@ -91,14 +93,10 @@ function normalizeBrandName(value) {
   return String(value || "").trim().replace(/\s+/g, " ").toLowerCase();
 }
 
-function PromoterBrandsCell({ brands, isLoading }) {
+function PromoterBrandsCell({ brands }) {
   const brandNames = brands.map((brand) => brand.name).filter(Boolean);
   const visibleBrandNames = brandNames.slice(0, 2);
   const hiddenBrandCount = Math.max(0, brandNames.length - visibleBrandNames.length);
-
-  if (isLoading && brandNames.length === 0) {
-    return <span className="brand-muted">Loading...</span>;
-  }
 
   if (brandNames.length === 0) {
     return <span className="brand-muted">--</span>;
@@ -128,7 +126,7 @@ export default function PromotersPage() {
   } = useResetPromoterPassword();
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(0);
-  const [sortKey, setSortKey] = useState("createdOn");
+  const [sortKey, setSortKey] = useState("lastUpdated");
   const [sortDirection, setSortDirection] = useState("desc");
   const [editingPromoter, setEditingPromoter] = useState(null);
   const [editStatus, setEditStatus] = useState(false);
@@ -139,8 +137,6 @@ export default function PromotersPage() {
   const [newBrandFile, setNewBrandFile] = useState(null);
   const [activeBrandEditorId, setActiveBrandEditorId] = useState(null);
   const [brandFileError, setBrandFileError] = useState("");
-  const { data: editingPromoterBrands = [], isLoading: isLoadingBrands } =
-    usePromoterBrands(editingPromoter?.promoterId, Boolean(editingPromoter));
   const {
     data: systemBrands = [],
     isLoading: isLoadingSystemBrands,
@@ -193,12 +189,8 @@ export default function PromotersPage() {
     safeCurrentPage * PAGE_SIZE,
     safeCurrentPage * PAGE_SIZE + PAGE_SIZE,
   );
-  const visiblePromoterIds = useMemo(
-    () => paginatedPromoters.map((promoter) => promoter.promoterId),
-    [paginatedPromoters],
-  );
-  const { brandsByPromoterId, isLoading: isLoadingTableBrands } =
-    usePromoterBrandsForPromoters(visiblePromoterIds);
+  const editingPromoterBrands = editingPromoter?.brands || [];
+  const isLoadingBrands = false;
 
   useEffect(() => {
     setCurrentPage(0);
@@ -209,6 +201,20 @@ export default function PromotersPage() {
       setCurrentPage(safeCurrentPage);
     }
   }, [currentPage, safeCurrentPage]);
+
+  useEffect(() => {
+    if (!editingPromoter?.id) {
+      return;
+    }
+
+    const refreshedPromoter = fetchedPromoters.find(
+      (promoter) => promoter.id === editingPromoter.id,
+    );
+
+    if (refreshedPromoter) {
+      setEditingPromoter(refreshedPromoter);
+    }
+  }, [editingPromoter?.id, fetchedPromoters]);
 
   useEffect(() => {
     setBrandDraftNames(
@@ -653,19 +659,28 @@ export default function PromotersPage() {
                     Date Added
                   </button>
                 </th>
+                <th className="sortable-header">
+                  <button
+                    type="button"
+                    className={`sortable-label is-button${sortKey === "lastUpdated" ? ` is-${sortDirection}` : ""}`}
+                    onClick={() => handleSort("lastUpdated")}
+                  >
+                    Last Updated
+                  </button>
+                </th>
                 <th className="actions-column">Action</th>
               </tr>
             </thead>
             <tbody>
               {isLoading ? (
                 <tr>
-                  <td colSpan="5">
+                  <td colSpan="6">
                     <div className="empty-state">Loading promoters...</div>
                   </td>
                 </tr>
               ) : isError ? (
                 <tr>
-                  <td colSpan="5">
+                  <td colSpan="6">
                     <div className="empty-state">
                       {error?.message || "Unable to load promoters."}
                     </div>
@@ -676,10 +691,7 @@ export default function PromotersPage() {
                   <tr key={promoter.id}>
                     <td>{promoter.promoterCode || "—"}</td>
                     <td className="brands-column">
-                      <PromoterBrandsCell
-                        brands={brandsByPromoterId.get(promoter.promoterId) || []}
-                        isLoading={isLoadingTableBrands}
-                      />
+                      <PromoterBrandsCell brands={promoter.brands || []} />
                     </td>
                     <td>
                       <span
@@ -692,6 +704,7 @@ export default function PromotersPage() {
                       </span>
                     </td>
                     <td>{formatLongDate(promoter.createdOn)}</td>
+                    <td>{formatLongDate(promoter.lastUpdated)}</td>
                     <td className="actions-column">
                       <div className="action-icons">
                         <button
@@ -708,7 +721,7 @@ export default function PromotersPage() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan="5">
+                  <td colSpan="6">
                     <div className="empty-state">No promoters match your search.</div>
                   </td>
                 </tr>
@@ -825,7 +838,7 @@ export default function PromotersPage() {
                                 }))
                               }
                             >
-                              <option value="">
+                              <option value="" disabled>
                                 {isLoadingSystemBrands ? "Loading brands..." : "Select brand"}
                               </option>
                               {systemBrands.map((systemBrand) => (
@@ -955,7 +968,7 @@ export default function PromotersPage() {
                     disabled={isBrandBusy || isLoadingSystemBrands}
                     onChange={(event) => setNewBrandName(event.target.value)}
                   >
-                    <option value="">
+                    <option value="" disabled>
                       {isLoadingSystemBrands ? "Loading brands..." : "Select brand"}
                     </option>
                     {systemBrands.map((brand) => (

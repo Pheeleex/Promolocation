@@ -1,4 +1,5 @@
 // src/types/promoters.ts
+import type { PromoterBrand, RawPromoterBrand } from "./promoter-brands";
 
 export type RawPromoter = {
   id: string;
@@ -40,6 +41,7 @@ export type RawPromoter = {
   push_notification: string;
   device_token: string | null;
   promo_code: string | null;
+  brands?: RawPromoterBrand[];
 };
 
 export type GetUsersResponse = {
@@ -63,6 +65,8 @@ export type Promoter = {
   status: PromoterStatus;
   createdOn: string;
   createdOnTime: number;
+  lastUpdated: string;
+  lastUpdatedTime: number;
   address: string;
   designation: string | null;
   region: string;
@@ -71,6 +75,7 @@ export type Promoter = {
   image: string | null;
   emergencyContact: string;
   profileStatus: boolean;
+  brands: PromoterBrand[];
 };
 
 // src/types/promoter.ts
@@ -79,9 +84,14 @@ export type CreatePromoterPayload = {
   promoter_id: string;
   first_name?: string;
   last_name?: string;
+  phone?: string;
   brand?: string;
   promo_code?: string;
-  promo_URL: File;
+  promo_URL?: File;
+  brands?: {
+    brand: string;
+    promo_URL?: File | null;
+  }[];
 };
 
 export type UpdatePromoterStatusValue = "active" | "inactive";
@@ -111,6 +121,13 @@ export type CreatePromoterResponse = {
     user_role?: string;
     email?: string;
   };
+  brands?: {
+    id?: string | number;
+    promoter_id?: string;
+    brand?: string;
+    promo_URL?: string | null;
+    created_at?: string | null;
+  }[];
 };
 
 export type UpdatePromoterResponse = {

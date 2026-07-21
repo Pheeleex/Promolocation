@@ -1,9 +1,7 @@
-import { useMemo } from "react";
-import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   createPromoterBrand,
   deletePromoterBrand,
-  getPromoterBrands,
   getSystemBrands,
   updatePromoterBrand,
 } from "../api/promoters-brands";
@@ -23,44 +21,6 @@ export function useSystemBrands() {
   });
 }
 
-export function usePromoterBrands(promoterId?: string, enabled = true) {
-  return useQuery({
-    queryKey: promoterBrandKeys.promoter(promoterId || ""),
-    queryFn: () => getPromoterBrands(promoterId!),
-    enabled: Boolean(promoterId) && enabled,
-  });
-}
-
-export function usePromoterBrandsForPromoters(promoterIds: string[]) {
-  const uniquePromoterIds = useMemo(
-    () =>
-      Array.from(
-        new Set(promoterIds.map((promoterId) => promoterId.trim()).filter(Boolean)),
-      ),
-    [promoterIds],
-  );
-  const results = useQueries({
-    queries: uniquePromoterIds.map((promoterId) => ({
-      queryKey: promoterBrandKeys.promoter(promoterId),
-      queryFn: () => getPromoterBrands(promoterId),
-      staleTime: 5 * 60 * 1000,
-    })),
-  });
-
-  return useMemo(() => {
-    const brandsByPromoterId = new Map();
-
-    uniquePromoterIds.forEach((promoterId, index) => {
-      brandsByPromoterId.set(promoterId, results[index]?.data ?? []);
-    });
-
-    return {
-      brandsByPromoterId,
-      isLoading: results.some((result) => result.isLoading),
-    };
-  }, [results, uniquePromoterIds]);
-}
-
 export function useCreatePromoterBrand() {
   const queryClient = useQueryClient();
 
@@ -70,6 +30,7 @@ export function useCreatePromoterBrand() {
       queryClient.invalidateQueries({
         queryKey: promoterBrandKeys.promoter(variables.promoterId),
       });
+      queryClient.invalidateQueries({ queryKey: ["promoters"] });
     },
   });
 }
@@ -83,6 +44,7 @@ export function useUpdatePromoterBrand() {
       queryClient.invalidateQueries({
         queryKey: promoterBrandKeys.promoter(variables.promoterId),
       });
+      queryClient.invalidateQueries({ queryKey: ["promoters"] });
     },
   });
 }
@@ -96,6 +58,7 @@ export function useDeletePromoterBrand() {
       queryClient.invalidateQueries({
         queryKey: promoterBrandKeys.promoter(variables.promoterId),
       });
+      queryClient.invalidateQueries({ queryKey: ["promoters"] });
     },
   });
 }
