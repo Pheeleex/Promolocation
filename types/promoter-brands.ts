@@ -23,14 +23,21 @@ export type PromoterBrand = {
 
 export type RawSystemBrand = {
   id: ApiId;
-  brand: string;
-  created_at: string | null;
+  brand?: string | null;
+  brand_name?: string | null;
+  brand_image?: string | null;
+  is_active?: number | string | boolean | null;
+  created_at?: string | null;
+  updated_at?: string | null;
 };
 
 export type SystemBrand = {
   id: ApiId;
   name: string;
+  logoUrl: string | null;
+  isActive: boolean | null;
   createdAt: string | null;
+  updatedAt: string | null;
 };
 
 export type GetSystemBrandsResponse = {
@@ -45,6 +52,60 @@ export type BrandMutationResponse = {
   message: string;
   promoter_id?: string;
   brand?: RawPromoterBrand;
+};
+
+export type ManageSystemBrandResponse = {
+  status: number;
+  message: string;
+  brand?: RawSystemBrand;
+  brands?: RawSystemBrand[];
+};
+
+export type CreateSystemBrandPayload = {
+  brandName: string;
+  brandImage?: File | null;
+  isActive: boolean;
+};
+
+export type UpdateSystemBrandPayload = {
+  id: ApiId;
+  brandName: string;
+  brandImage?: File | null;
+  isActive: boolean;
+};
+
+export type DeleteSystemBrandPayload = {
+  id: ApiId;
+};
+
+export type ImportBrandsCategoryPayload = {
+  file: File;
+  promoId?: string;
+};
+
+export type ImportBrandsCategoryResult = {
+  row: number;
+  promoter_id?: string | null;
+  promoter_code?: string | null;
+  brand?: string | null;
+  status: string;
+  brand_id?: ApiId | null;
+  promo_URL?: string | null;
+  message?: string | null;
+  reason?: string | null;
+  error?: string | null;
+};
+
+export type ImportBrandsCategoryResponse = {
+  status: number;
+  message: string;
+  summary: {
+    total: number;
+    imported: number;
+    updated: number;
+    failed: number;
+  };
+  results: ImportBrandsCategoryResult[];
 };
 
 export type CreatePromoterBrandPayload = {

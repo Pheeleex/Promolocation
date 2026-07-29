@@ -1,6 +1,7 @@
 import React from "react";
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { Link } from "react-router-dom";
 import Swal from "sweetalert2";
 import {
   createPromoter as createPromoterRequest,
@@ -8,6 +9,7 @@ import {
   updatePromoter as updatePromoterRequest,
 } from "../api/promoters";
 import AppLayout from "../components/AppLayout";
+import BrandLogoSelect from "../components/BrandLogoSelect";
 import { useSystemBrands } from "../hooks/use-promoters-brands";
 import { validateQrCodeImageUpload } from "../utils/qrCodeValidation";
 import { PROMOTER_CODE_LABEL } from "../utils/uiLabels";
@@ -406,6 +408,14 @@ export default function AddPromoterPage() {
     <AppLayout activeNav="add-promoter" mainContentClassName="add-promoter-main">
       <div className="add-promoter-container add-promoter-page">
         <h1 className="page-title centered">Add Promoters</h1>
+        <div className="add-promoter-view-switch" aria-label="Add promoter method">
+          <Link to="/promoters/new" className="is-active" aria-current="page">
+            Manual Entry
+          </Link>
+          <Link to="/promoters/import-brands">
+            Excel Upload
+          </Link>
+        </div>
 
         <div className="form-card">
           <div className="form-header">
@@ -492,26 +502,19 @@ export default function AddPromoterPage() {
                         <label htmlFor={`brandName-${assignment.id}`}>
                           Brand Name <span className="required-mark">*</span>
                         </label>
-                        <select
+                        <BrandLogoSelect
                           id={`brandName-${assignment.id}`}
                           value={assignment.brandName}
+                          brands={systemBrands}
                           disabled={isSubmitting || isLoadingSystemBrands}
-                          onChange={(event) =>
+                          isLoading={isLoadingSystemBrands}
+                          onChange={(brandName) =>
                             updateBrandAssignment(assignment.id, {
-                              brandName: event.target.value,
+                              brandName,
                               error: "",
                             })
                           }
-                        >
-                          <option value="" disabled>
-                            {isLoadingSystemBrands ? "Loading brands..." : "Select brand"}
-                          </option>
-                          {systemBrands.map((brand) => (
-                            <option key={brand.id} value={brand.name}>
-                              {brand.name}
-                            </option>
-                          ))}
-                        </select>
+                        />
                       </div>
 
                       <div className="form-group">

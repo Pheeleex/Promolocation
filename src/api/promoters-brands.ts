@@ -1,10 +1,17 @@
 import {
   BrandMutationResponse,
+  CreateSystemBrandPayload,
   CreatePromoterBrandPayload,
+  DeleteSystemBrandPayload,
   DeletePromoterBrandPayload,
   GetSystemBrandsResponse,
+  ImportBrandsCategoryPayload,
+  ImportBrandsCategoryResponse,
+  ManageSystemBrandResponse,
   PromoterBrand,
+  RawSystemBrand,
   SystemBrand,
+  UpdateSystemBrandPayload,
   UpdatePromoterBrandPayload,
 } from "../../types/promoter-brands";
 import {
@@ -17,6 +24,8 @@ import { assertApiSuccess } from "./response";
 const CREATE_PROMOTER_BRAND_PATH = "/create_promoter_brand";
 const MANAGE_PROMOTER_BRAND_PATH = "/manage_promoter_brand";
 const GET_SYSTEM_BRANDS_PATH = "/get_system_brands";
+const MANAGE_SYSTEM_BRANDS_PATH = "/manage_brands";
+const IMPORT_BRANDS_CATEGORY_PATH = "/import_brands_category";
 
 function mapPromoterBrand(brand: any): PromoterBrand {
   return {
@@ -30,6 +39,31 @@ function mapPromoterBrand(brand: any): PromoterBrand {
   };
 }
 
+function normalizeIsActive(isActive: RawSystemBrand["is_active"]) {
+  if (isActive === null || isActive === undefined) {
+    return null;
+  }
+
+  return isActive === true || isActive === 1 || isActive === "1";
+}
+
+export function mapSystemBrand(brand: RawSystemBrand): SystemBrand | null {
+  const name = (brand.brand_name ?? brand.brand ?? "").trim();
+
+  if (!name) {
+    return null;
+  }
+
+  return {
+    id: brand.id,
+    name,
+    logoUrl: brand.brand_image ?? null,
+    isActive: normalizeIsActive(brand.is_active),
+    createdAt: brand.created_at ?? null,
+    updatedAt: brand.updated_at ?? null,
+  };
+}
+
 export async function getSystemBrands(): Promise<SystemBrand[]> {
   const response = assertApiSuccess<GetSystemBrandsResponse>(
     await tokenPost<GetSystemBrandsResponse>(
@@ -37,11 +71,120 @@ export async function getSystemBrands(): Promise<SystemBrand[]> {
     ),
   );
 
-  return response.brands.map((brand) => ({
-    id: brand.id,
-    name: brand.brand,
-    createdAt: brand.created_at,
-  }));
+  return response.brands
+    .map(mapSystemBrand)
+    .filter((brand): brand is SystemBrand => Boolean(brand));
+}
+
+function mapSystemBrands(brands?: RawSystemBrand[]): SystemBrand[] {
+  return (brands ?? [])
+    .map(mapSystemBrand)
+    .filter((brand): brand is SystemBrand => Boolean(brand));
+}
+
+function buildSystemBrandFormData(
+  payload: CreateSystemBrandPayload | UpdateSystemBrandPayload,
+  functionType: "create" | "update",
+) {
+  const formData = new FormData();
+
+  formData.set("function_type", functionType);
+  formData.set("brand_name", payload.brandName.trim());
+  formData.set("is_active", payload.isActive ? "1" : "0");
+
+  if ("id" in payload) {
+    formData.set("id", String(payload.id));
+  }
+
+  if (payload.brandImage) {
+    formData.set("brand_image", payload.brandImage);
+  }
+
+  return formData;
+}
+
+export async function listManagedSystemBrands(): Promise<SystemBrand[]> {
+  const response = assertApiSuccess(
+    await authenticatedAdminPost<ManageSystemBrandResponse>(
+      MANAGE_SYSTEM_BRANDS_PATH,
+      {
+        function_type: "list",
+      },
+    ),
+  );
+
+  return mapSystemBrands(response.brands);
+}
+
+export async function createSystemBrand(
+  payload: CreateSystemBrandPayload,
+): Promise<SystemBrand> {
+  const response = assertApiSuccess(
+    await authenticatedAdminFormPost<ManageSystemBrandResponse>(
+      MANAGE_SYSTEM_BRANDS_PATH,
+      buildSystemBrandFormData(payload, "create"),
+    ),
+  );
+
+  const brand = response.brand ? mapSystemBrand(response.brand) : null;
+
+  if (!brand) {
+    throw new Error("The server did not return the created brand.");
+  }
+
+  return brand;
+}
+
+export async function updateSystemBrand(
+  payload: UpdateSystemBrandPayload,
+): Promise<SystemBrand> {
+  const response = assertApiSuccess(
+    await authenticatedAdminFormPost<ManageSystemBrandResponse>(
+      MANAGE_SYSTEM_BRANDS_PATH,
+      buildSystemBrandFormData(payload, "update"),
+    ),
+  );
+
+  const brand = response.brand ? mapSystemBrand(response.brand) : null;
+
+  if (!brand) {
+    throw new Error("The server did not return the updated brand.");
+  }
+
+  return brand;
+}
+
+export async function deleteSystemBrand(
+  payload: DeleteSystemBrandPayload,
+): Promise<void> {
+  assertApiSuccess(
+    await authenticatedAdminPost<ManageSystemBrandResponse>(
+      MANAGE_SYSTEM_BRANDS_PATH,
+      {
+        function_type: "delete",
+        id: payload.id,
+      },
+    ),
+  );
+}
+
+export async function importBrandsCategory(
+  payload: ImportBrandsCategoryPayload,
+): Promise<ImportBrandsCategoryResponse> {
+  const formData = new FormData();
+
+  formData.set("file", payload.file);
+
+  if (payload.promoId) {
+    formData.set("promoId", payload.promoId);
+  }
+
+  return assertApiSuccess(
+    await authenticatedAdminFormPost<ImportBrandsCategoryResponse>(
+      IMPORT_BRANDS_CATEGORY_PATH,
+      formData,
+    ),
+  );
 }
 
 export async function createPromoterBrand(

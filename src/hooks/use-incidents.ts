@@ -22,6 +22,7 @@ export function useIncidents() {
   });
 }
 
+
 export function useUpdateIncidentStatus() {
   const queryClient = useQueryClient();
   const userId = useAuthStore((state) => state.user?.user_id);

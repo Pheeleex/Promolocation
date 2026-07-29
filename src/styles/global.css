@@ -44,6 +44,181 @@ img {
   max-width: 100%;
 }
 
+.brand-logo-select {
+  position: relative;
+  width: 100%;
+}
+
+.brand-logo-select__button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 44px;
+  border: 1.5px solid #b7d0f7;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #1f2937;
+  padding: 7px 10px;
+  text-align: left;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s, background-color 0.2s;
+}
+
+.brand-logo-select__button:hover:not(:disabled),
+.brand-logo-select__button:focus-visible {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.12);
+}
+
+.brand-logo-select__button:disabled {
+  cursor: not-allowed;
+  opacity: 0.72;
+}
+
+.brand-logo-select__button--placeholder {
+  color: #718096;
+}
+
+.brand-logo-select__value {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 14px;
+  font-weight: 650;
+}
+
+.brand-logo-select__chevron {
+  display: inline-flex;
+  width: 20px;
+  height: 20px;
+  flex: 0 0 auto;
+  color: #5b7397;
+}
+
+.brand-logo-select__chevron svg,
+.brand-logo-select__check svg {
+  width: 100%;
+  height: 100%;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2.2;
+}
+
+.brand-logo-select__menu {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  overflow: hidden;
+  border: 1px solid #cfe0f7;
+  border-radius: 12px;
+  background: #ffffff;
+  box-shadow: 0 18px 40px rgba(15, 41, 80, 0.16);
+}
+
+.brand-logo-select__list {
+  max-height: 248px;
+  margin: 0;
+  padding: 6px;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.brand-logo-select__option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 48px;
+  border-radius: 8px;
+  padding: 7px 8px;
+  color: #17365f;
+  cursor: pointer;
+}
+
+.brand-logo-select__option:hover,
+.brand-logo-select__option.is-active {
+  background: #eef6ff;
+}
+
+.brand-logo-select__option.is-selected {
+  background: #e8f2ff;
+  color: #0e2b63;
+}
+
+.brand-logo {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 30px;
+  overflow: hidden;
+  border: 1px solid #d7e5fb;
+  border-radius: 8px;
+  background: #f7fbff;
+  color: #0e2b63;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.brand-logo img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  padding: 3px;
+}
+
+.brand-logo--small {
+  width: 24px;
+  height: 24px;
+  flex-basis: 24px;
+  border-radius: 6px;
+  font-size: 10px;
+}
+
+.brand-logo-select__option-copy {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.brand-logo-select__option-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 14px;
+  font-weight: 750;
+}
+
+.brand-logo-select__option-status {
+  color: #9a5b18;
+  font-size: 11px;
+  font-weight: 750;
+}
+
+.brand-logo-select__check {
+  display: inline-flex;
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+  color: #2563eb;
+}
+
+.brand-logo-select__empty {
+  padding: 14px;
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 650;
+}
+
 a {
   color: inherit;
   text-decoration: none;
@@ -147,11 +322,16 @@ a {
 }
 
 .sidebar-nav img,
+.sidebar-nav svg,
 .logout-link img {
   width: 20px;
   height: 20px;
   object-fit: contain;
   flex-shrink: 0;
+}
+
+.sidebar-nav img,
+.logout-link img {
   filter: brightness(0) invert(1);
 }
 

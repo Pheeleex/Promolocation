@@ -4,10 +4,13 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import { AppDataProvider } from "./context/AppDataContext";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import AddPromoterPage from "./pages/AddPromoterPage";
+import BrandsPage from "./pages/BrandsPage";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 import IncidentDetailPage from "./pages/IncidentDetailPage";
 import IncidentHistoryPage from "./pages/IncidentHistoryPage";
+import ImportBrandsPage from "./pages/ImportBrandsPage";
 import LoginPage from "./pages/LoginPage";
+import PromotionsPage from "./pages/PromotionsPage";
 import PromotersPage from "./pages/PromotersPage";
 import ReportIncidentPage from "./pages/ReportIncidentPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
@@ -40,6 +43,38 @@ function AppRoutes() {
         element={
           <ProtectedRoute disallowSpecialAdmin>
             <AddPromoterPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/brands"
+        element={
+          <ProtectedRoute disallowSpecialAdmin>
+            <BrandsPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/promotions"
+        element={
+          <ProtectedRoute disallowSpecialAdmin>
+            <PromotionsPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/promotions/:promotionId"
+        element={
+          <ProtectedRoute disallowSpecialAdmin>
+            <PromotionsPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/promoters/import-brands"
+        element={
+          <ProtectedRoute disallowSpecialAdmin>
+            <ImportBrandsPage />
           </ProtectedRoute>
         }
       />

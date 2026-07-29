@@ -2,6 +2,7 @@ import React from "react";
 import { useEffect, useMemo, useState } from "react";
 import Swal from "sweetalert2";
 import AppLayout from "../components/AppLayout";
+import BrandLogoSelect from "../components/BrandLogoSelect";
 import Modal from "../components/Modal";
 import Pagination from "../components/Pagination";
 import {
@@ -827,26 +828,19 @@ export default function PromotersPage() {
                         <>
                           <div className="brand-row-main">
                             <label htmlFor={`brandName-${brand.id}`}>Brand</label>
-                            <select
+                            <BrandLogoSelect
                               id={`brandName-${brand.id}`}
                               value={brandDraftNames[brand.id] ?? ""}
+                              brands={systemBrands}
                               disabled={isBrandBusy || isLoadingSystemBrands}
-                              onChange={(event) =>
+                              isLoading={isLoadingSystemBrands}
+                              onChange={(brandName) =>
                                 setBrandDraftNames((currentDrafts) => ({
                                   ...currentDrafts,
-                                  [brand.id]: event.target.value,
+                                  [brand.id]: brandName,
                                 }))
                               }
-                            >
-                              <option value="" disabled>
-                                {isLoadingSystemBrands ? "Loading brands..." : "Select brand"}
-                              </option>
-                              {systemBrands.map((systemBrand) => (
-                                <option key={systemBrand.id} value={systemBrand.name}>
-                                  {systemBrand.name}
-                                </option>
-                              ))}
-                            </select>
+                            />
                           </div>
                           <div className="brand-row-actions">
                             <label className="brand-file-control">
@@ -962,21 +956,14 @@ export default function PromotersPage() {
               <div className="edit-promoter-brand-add is-editing">
                 <div className="brand-row-main">
                   <label htmlFor="newBrandName">New Brand</label>
-                  <select
+                  <BrandLogoSelect
                     id="newBrandName"
                     value={newBrandName}
+                    brands={systemBrands}
                     disabled={isBrandBusy || isLoadingSystemBrands}
-                    onChange={(event) => setNewBrandName(event.target.value)}
-                  >
-                    <option value="" disabled>
-                      {isLoadingSystemBrands ? "Loading brands..." : "Select brand"}
-                    </option>
-                    {systemBrands.map((brand) => (
-                      <option key={brand.id} value={brand.name}>
-                        {brand.name}
-                      </option>
-                    ))}
-                  </select>
+                    isLoading={isLoadingSystemBrands}
+                    onChange={setNewBrandName}
+                  />
                 </div>
                 <div className="brand-row-actions">
                   <label className="brand-file-control">

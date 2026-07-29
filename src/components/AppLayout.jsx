@@ -19,6 +19,18 @@ const navItems = [
     icon: "assets/add-personnel.png",
   },
   {
+    key: "brands",
+    label: "Manage Brands",
+    path: "/brands",
+    iconType: "brand",
+  },
+  {
+    key: "promotions",
+    label: "Promotions",
+    path: "/promotions",
+    iconType: "promotion",
+  },
+  {
     key: "incidents",
     label: "Incident History",
     path: "/incidents",
@@ -45,6 +57,45 @@ function SettingsIcon() {
       <circle cx="4" cy="12" r="2" />
       <circle cx="12" cy="10" r="2" />
       <circle cx="20" cy="14" r="2" />
+    </svg>
+  );
+}
+
+function BrandNavIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M6 4h9l3 3v13H6z" />
+      <path d="M15 4v4h4" />
+      <path d="M9 14h6" />
+      <path d="M9 17h4" />
+    </svg>
+  );
+}
+
+function PromotionNavIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <rect x="4" y="5" width="16" height="15" rx="2" />
+      <path d="M8 3v4" />
+      <path d="M16 3v4" />
+      <path d="M4 10h16" />
+      <path d="m9 15 2 2 4-4" />
     </svg>
   );
 }
@@ -140,7 +191,13 @@ export default function AppLayout({
                     aria-current={item.key === activeNav ? "page" : undefined}
                     onClick={closeMobileSidebar}
                   >
-                    <img src={assetPath(item.icon)} alt="" aria-hidden="true" />
+                    {item.iconType === "brand" ? (
+                      <BrandNavIcon />
+                    ) : item.iconType === "promotion" ? (
+                      <PromotionNavIcon />
+                    ) : (
+                      <img src={assetPath(item.icon)} alt="" aria-hidden="true" />
+                    )}
                     <span>{item.label}</span>
                   </Link>
                 </li>
