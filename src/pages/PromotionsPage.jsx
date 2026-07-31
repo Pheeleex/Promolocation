@@ -92,6 +92,10 @@ function canManagePromotion(promotion) {
   return state.label === "Active" || state.label === "Scheduled";
 }
 
+function isCurrentlyActivePromotion(promotion) {
+  return getPromotionState(promotion).label === "Active";
+}
+
 function getPromotionCode(promotion) {
   return promotion?.promotionCode || String(promotion?.id || "");
 }
@@ -1023,7 +1027,7 @@ function PromotionManagementView({
 }) {
   const { promotionId } = useParams();
   const promotion = isActivePromotionRoute
-    ? promotions.find((currentPromotion) => currentPromotion.isActive)
+    ? promotions.find(isCurrentlyActivePromotion)
     : promotions.find((currentPromotion) =>
         hasSamePromotionId(currentPromotion.id, promotionId),
       );
