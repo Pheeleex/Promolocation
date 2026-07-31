@@ -31,6 +31,12 @@ const navItems = [
     iconType: "promotion",
   },
   {
+    key: "active-promotion",
+    label: "Active Promotion",
+    path: "/promotions/active",
+    iconType: "promotion",
+  },
+  {
     key: "incidents",
     label: "Incident History",
     path: "/incidents",

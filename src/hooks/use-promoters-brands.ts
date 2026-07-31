@@ -4,6 +4,7 @@ import {
   createSystemBrand,
   deletePromoterBrand,
   deleteSystemBrand,
+  getPromoterBrands,
   getSystemBrands,
   importBrandsCategory,
   listManagedSystemBrands,
@@ -31,6 +32,14 @@ export function useManagedSystemBrands() {
   return useQuery({
     queryKey: promoterBrandKeys.managedSystem,
     queryFn: listManagedSystemBrands,
+  });
+}
+
+export function usePromoterBrands(promoterId: string, enabled = true) {
+  return useQuery({
+    queryKey: promoterBrandKeys.promoter(promoterId),
+    queryFn: () => getPromoterBrands({ promoterId }),
+    enabled: enabled && Boolean(promoterId),
   });
 }
 

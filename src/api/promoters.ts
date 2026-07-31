@@ -27,7 +27,12 @@ export async function getPromoters(): Promise<Promoter[]> {
     throw new Error("Failed to fetch promoters.");
   }
 
-  return response.users.map(mapPromoter);
+  const promoters = response.users.map(mapPromoter);
+
+  console.log("[promoters] raw response", response);
+  console.log("[promoters] mapped promoters", promoters);
+
+  return promoters;
 }
 
 

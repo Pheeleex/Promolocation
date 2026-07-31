@@ -2,7 +2,6 @@ import React from "react";
 import { useEffect, useMemo, useState } from "react";
 import Swal from "sweetalert2";
 import AppLayout from "../components/AppLayout";
-import BrandLogoSelect from "../components/BrandLogoSelect";
 import Modal from "../components/Modal";
 import Pagination from "../components/Pagination";
 import {
@@ -11,25 +10,11 @@ import {
   useUpdatePromoter,
 } from "../hooks/use-promoters";
 import {
-  useCreatePromoterBrand,
-  useDeletePromoterBrand,
-  useSystemBrands,
-  useUpdatePromoterBrand,
+  usePromoterBrands,
 } from "../hooks/use-promoters-brands";
+import { useTablePagination } from "../hooks/use-table-pagination";
 import { formatLongDate, getPromoterStatusColor } from "../utils/formatters";
-import { validateQrCodeImageUpload } from "../utils/qrCodeValidation";
 import { PROMOTER_CODE_LABEL } from "../utils/uiLabels";
-
-const PAGE_SIZE = 10;
-const BRAND_QR_ACCEPT = ".jpg,.jpeg,.png,.gif,.webp";
-const BRAND_QR_MIME_TYPES = [
-  "image/jpeg",
-  "image/png",
-  "image/gif",
-  "image/webp",
-];
-const BRAND_QR_EXTENSIONS = ["jpg", "jpeg", "png", "gif", "webp"];
-const NEW_BRAND_EDITOR_ID = "new";
 
 function isPromoterRole(role) {
   const normalizedRole = typeof role === "string" ? role.trim().toLowerCase() : "";
@@ -90,14 +75,23 @@ function getPromoterSortValue(promoter, sortKey) {
   return String(promoter[sortKey] ?? "").toLowerCase();
 }
 
-function normalizeBrandName(value) {
-  return String(value || "").trim().replace(/\s+/g, " ").toLowerCase();
-}
-
-function PromoterBrandsCell({ brands }) {
-  const brandNames = brands.map((brand) => brand.name).filter(Boolean);
+function PromoterBrandsCell({ promoterId }) {
+  const {
+    data: activeBrands = [],
+    isLoading,
+    isError,
+  } = usePromoterBrands(promoterId, Boolean(promoterId));
+  const brandNames = activeBrands.map((brand) => brand.name).filter(Boolean);
   const visibleBrandNames = brandNames.slice(0, 2);
   const hiddenBrandCount = Math.max(0, brandNames.length - visibleBrandNames.length);
+
+  if (isLoading) {
+    return <span className="brand-muted">Loading...</span>;
+  }
+
+  if (isError) {
+    return <span className="brand-muted">--</span>;
+  }
 
   if (brandNames.length === 0) {
     return <span className="brand-muted">--</span>;
@@ -126,29 +120,11 @@ export default function PromotersPage() {
     isPending: isResettingPromoter,
   } = useResetPromoterPassword();
   const [searchTerm, setSearchTerm] = useState("");
-  const [currentPage, setCurrentPage] = useState(0);
   const [sortKey, setSortKey] = useState("lastUpdated");
   const [sortDirection, setSortDirection] = useState("desc");
   const [editingPromoter, setEditingPromoter] = useState(null);
   const [editStatus, setEditStatus] = useState(false);
   const [resettingPromoterId, setResettingPromoterId] = useState(null);
-  const [brandDraftNames, setBrandDraftNames] = useState({});
-  const [brandDraftFiles, setBrandDraftFiles] = useState({});
-  const [newBrandName, setNewBrandName] = useState("");
-  const [newBrandFile, setNewBrandFile] = useState(null);
-  const [activeBrandEditorId, setActiveBrandEditorId] = useState(null);
-  const [brandFileError, setBrandFileError] = useState("");
-  const {
-    data: systemBrands = [],
-    isLoading: isLoadingSystemBrands,
-    isError: isSystemBrandsError,
-  } = useSystemBrands();
-  const { mutateAsync: createPromoterBrand, isPending: isCreatingBrand } =
-    useCreatePromoterBrand();
-  const { mutateAsync: updatePromoterBrand, isPending: isUpdatingBrand } =
-    useUpdatePromoterBrand();
-  const { mutateAsync: deletePromoterBrand, isPending: isDeletingBrand } =
-    useDeletePromoterBrand();
   const isEditingPromoterActive = editStatus;
   const editStatusActionLabel = isEditingPromoterActive ? "Deactivate" : "Activate";
   const editStatusHelperCopy = isEditingPromoterActive
@@ -184,24 +160,24 @@ export default function PromotersPage() {
     return 0;
   });
 
-  const totalPages = Math.max(1, Math.ceil(sortedPromoters.length / PAGE_SIZE));
-  const safeCurrentPage = Math.min(currentPage, totalPages - 1);
-  const paginatedPromoters = sortedPromoters.slice(
-    safeCurrentPage * PAGE_SIZE,
-    safeCurrentPage * PAGE_SIZE + PAGE_SIZE,
+  const {
+    currentPage,
+    paginatedItems: paginatedPromoters,
+    setCurrentPage,
+    totalPages,
+  } = useTablePagination(sortedPromoters, [
+    searchTerm,
+    promoters.length,
+    sortKey,
+    sortDirection,
+  ]);
+  const {
+    data: editingPromoterBrands = [],
+    isLoading: isLoadingBrands,
+  } = usePromoterBrands(
+    editingPromoter?.promoterId || "",
+    Boolean(editingPromoter?.promoterId),
   );
-  const editingPromoterBrands = editingPromoter?.brands || [];
-  const isLoadingBrands = false;
-
-  useEffect(() => {
-    setCurrentPage(0);
-  }, [searchTerm, promoters.length]);
-
-  useEffect(() => {
-    if (safeCurrentPage !== currentPage) {
-      setCurrentPage(safeCurrentPage);
-    }
-  }, [currentPage, safeCurrentPage]);
 
   useEffect(() => {
     if (!editingPromoter?.id) {
@@ -216,17 +192,6 @@ export default function PromotersPage() {
       setEditingPromoter(refreshedPromoter);
     }
   }, [editingPromoter?.id, fetchedPromoters]);
-
-  useEffect(() => {
-    setBrandDraftNames(
-      editingPromoterBrands.reduce((drafts, brand) => {
-        drafts[brand.id] = brand.name || "";
-        return drafts;
-      }, {}),
-    );
-    setBrandDraftFiles({});
-    setActiveBrandEditorId(null);
-  }, [editingPromoterBrands]);
 
   const handleSort = (key) => {
     if (sortKey === key) {
@@ -243,150 +208,20 @@ export default function PromotersPage() {
   const openEditModal = (promoter) => {
     setEditingPromoter(promoter);
     setEditStatus(promoter.status === "Active");
-    setNewBrandName("");
-    setNewBrandFile(null);
-    setActiveBrandEditorId(null);
-    setBrandFileError("");
   };
 
   const closeEditModal = () => {
     setEditingPromoter(null);
-    setNewBrandName("");
-    setNewBrandFile(null);
-    setBrandDraftNames({});
-    setBrandDraftFiles({});
-    setActiveBrandEditorId(null);
-    setBrandFileError("");
-  };
-
-  const isBrandBusy = isCreatingBrand || isUpdatingBrand || isDeletingBrand;
-
-  const openBrandEditor = (brand) => {
-    if (activeBrandEditorId) {
-      return;
-    }
-
-    setBrandDraftNames((currentDrafts) => ({
-      ...currentDrafts,
-      [brand.id]: brand.name || "",
-    }));
-    setBrandDraftFiles((currentFiles) => {
-      const nextFiles = { ...currentFiles };
-      delete nextFiles[brand.id];
-      return nextFiles;
-    });
-    setBrandFileError("");
-    setActiveBrandEditorId(String(brand.id));
-  };
-
-  const openNewBrandEditor = () => {
-    if (activeBrandEditorId) {
-      return;
-    }
-
-    setNewBrandName("");
-    setNewBrandFile(null);
-    setBrandFileError("");
-    setActiveBrandEditorId(NEW_BRAND_EDITOR_ID);
-  };
-
-  const closeBrandEditor = () => {
-    if (activeBrandEditorId && activeBrandEditorId !== NEW_BRAND_EDITOR_ID) {
-      const activeBrand = editingPromoterBrands.find(
-        (brand) => String(brand.id) === activeBrandEditorId,
-      );
-
-      if (activeBrand) {
-        setBrandDraftNames((currentDrafts) => ({
-          ...currentDrafts,
-          [activeBrand.id]: activeBrand.name || "",
-        }));
-        setBrandDraftFiles((currentFiles) => {
-          const nextFiles = { ...currentFiles };
-          delete nextFiles[activeBrand.id];
-          return nextFiles;
-        });
-      }
-    }
-
-    setNewBrandName("");
-    setNewBrandFile(null);
-    setBrandFileError("");
-    setActiveBrandEditorId(null);
-  };
-
-  const validateBrandQrFile = async (file) => {
-    if (!file) {
-      return "";
-    }
-
-    const validationResult = await validateQrCodeImageUpload(file, {
-      fileLabel: "Brand QR code",
-      allowedMimeTypes: BRAND_QR_MIME_TYPES,
-      allowedExtensions: BRAND_QR_EXTENSIONS,
-    });
-
-    return validationResult.error;
-  };
-
-  const handleBrandFileChange = async (brandId, file) => {
-    setBrandFileError("");
-
-    if (!file) {
-      setBrandDraftFiles((currentFiles) => {
-        const nextFiles = { ...currentFiles };
-        delete nextFiles[brandId];
-        return nextFiles;
-      });
-      return;
-    }
-
-    const validationError = await validateBrandQrFile(file);
-
-    if (validationError) {
-      setBrandFileError(validationError);
-      return;
-    }
-
-    setBrandDraftFiles((currentFiles) => ({
-      ...currentFiles,
-      [brandId]: file,
-    }));
-  };
-
-  const handleNewBrandFileChange = async (file) => {
-    setBrandFileError("");
-
-    if (!file) {
-      setNewBrandFile(null);
-      return;
-    }
-
-    const validationError = await validateBrandQrFile(file);
-
-    if (validationError) {
-      setBrandFileError(validationError);
-      setNewBrandFile(null);
-      return;
-    }
-
-    setNewBrandFile(file);
   };
 
   const handleEditSubmit = async (event) => {
     event.preventDefault();
 
-    if (!editingPromoter) {
+    if (isUpdatingPromoter) {
       return;
     }
 
-    if (activeBrandEditorId) {
-      await Swal.fire({
-        icon: "warning",
-        title: "Brand Draft Open",
-        text: "Save or cancel the open brand change before saving the promoter account.",
-        confirmButtonColor: "#0E2B63",
-      });
+    if (!editingPromoter) {
       return;
     }
 
@@ -419,154 +254,11 @@ export default function PromotersPage() {
     }
   };
 
-  const handleAddBrand = async () => {
-    const trimmedBrandName = newBrandName.trim();
-
-    if (!editingPromoter || !trimmedBrandName) {
-      setBrandFileError("Brand name is required.");
-      return;
-    }
-
-    const normalizedNewBrandName = normalizeBrandName(trimmedBrandName);
-    const hasDuplicateBrand = editingPromoterBrands.some(
-      (brand) => normalizeBrandName(brand.name) === normalizedNewBrandName,
-    );
-
-    if (hasDuplicateBrand) {
-      setBrandFileError("This promoter already belongs to that brand.");
-      return;
-    }
-
-    try {
-      await createPromoterBrand({
-        promoterId: editingPromoter.promoterId,
-        brandName: trimmedBrandName,
-        promoFile: newBrandFile,
-      });
-
-      setNewBrandName("");
-      setNewBrandFile(null);
-      setActiveBrandEditorId(null);
-      setBrandFileError("");
-
-      Swal.fire({
-        icon: "success",
-        title: "Brand Added",
-        text: `${trimmedBrandName} has been added to this promoter.`,
-        confirmButtonColor: "#22c55e",
-        timer: 1600,
-        showConfirmButton: false,
-      });
-    } catch (brandError) {
-      Swal.fire({
-        icon: "error",
-        title: "Unable to Add Brand",
-        text: brandError?.message || "Something went wrong.",
-        confirmButtonColor: "#d33",
-      });
-    }
-  };
-
-  const handleUpdateBrand = async (brand) => {
-    const trimmedBrandName = (brandDraftNames[brand.id] || "").trim();
-
-    if (!editingPromoter || !trimmedBrandName) {
-      setBrandFileError("Brand name is required.");
-      return;
-    }
-
-    const normalizedUpdatedBrandName = normalizeBrandName(trimmedBrandName);
-    const hasDuplicateBrand = editingPromoterBrands.some(
-      (existingBrand) =>
-        String(existingBrand.id) !== String(brand.id) &&
-        normalizeBrandName(existingBrand.name) === normalizedUpdatedBrandName,
-    );
-
-    if (hasDuplicateBrand) {
-      setBrandFileError("This promoter already belongs to that brand.");
-      return;
-    }
-
-    try {
-      await updatePromoterBrand({
-        id: brand.id,
-        promoterId: editingPromoter.promoterId,
-        brandName: trimmedBrandName,
-        promoFile: brandDraftFiles[brand.id] || null,
-      });
-
-      setBrandDraftFiles((currentFiles) => {
-        const nextFiles = { ...currentFiles };
-        delete nextFiles[brand.id];
-        return nextFiles;
-      });
-      setActiveBrandEditorId(null);
-      setBrandFileError("");
-
-      Swal.fire({
-        icon: "success",
-        title: "Brand Updated",
-        confirmButtonColor: "#22c55e",
-        timer: 1600,
-        showConfirmButton: false,
-      });
-    } catch (brandError) {
-      Swal.fire({
-        icon: "error",
-        title: "Unable to Update Brand",
-        text: brandError?.message || "Something went wrong.",
-        confirmButtonColor: "#d33",
-      });
-    }
-  };
-
-  const handleDeleteBrand = async (brand) => {
-    if (!editingPromoter) {
-      return;
-    }
-
-    const confirmation = await Swal.fire({
-      icon: "warning",
-      title: `Delete ${brand.name || "this brand"}?`,
-      text: "This will remove the brand from this promoter.",
-      showCancelButton: true,
-      confirmButtonText: "Delete Brand",
-      confirmButtonColor: "#dc2626",
-      cancelButtonColor: "#94a3b8",
-    });
-
-    if (!confirmation.isConfirmed) {
-      return;
-    }
-
-    try {
-      await deletePromoterBrand({
-        id: brand.id,
-        promoterId: editingPromoter.promoterId,
-      });
-
-      if (String(brand.id) === activeBrandEditorId) {
-        setActiveBrandEditorId(null);
-      }
-
-      Swal.fire({
-        icon: "success",
-        title: "Brand Deleted",
-        confirmButtonColor: "#22c55e",
-        timer: 1600,
-        showConfirmButton: false,
-      });
-    } catch (brandError) {
-      Swal.fire({
-        icon: "error",
-        title: "Unable to Delete Brand",
-        text: brandError?.message || "Something went wrong.",
-        confirmButtonColor: "#d33",
-      });
-    }
-  };
-
   const handleResetPassword = async (promoter) => {
+    if (isResettingPromoter || isUpdatingPromoter) {
+      return;
+    }
+
     const displayedPromoterCode = promoter.promoterCode || "this promoter";
 
     const confirmation = await Swal.fire({
@@ -692,7 +384,7 @@ export default function PromotersPage() {
                   <tr key={promoter.id}>
                     <td>{promoter.promoterCode || "—"}</td>
                     <td className="brands-column">
-                      <PromoterBrandsCell brands={promoter.brands || []} />
+                      <PromoterBrandsCell promoterId={promoter.promoterId} />
                     </td>
                     <td>
                       <span
@@ -733,7 +425,7 @@ export default function PromotersPage() {
 
         <div className="card-footer">
           <Pagination
-            currentPage={safeCurrentPage}
+            currentPage={currentPage}
             totalPages={totalPages}
             onPageChange={setCurrentPage}
           />
@@ -754,6 +446,7 @@ export default function PromotersPage() {
             type="button"
             className="close-modal"
             onClick={closeEditModal}
+            disabled={isUpdatingPromoter}
             aria-label="Close edit promoter modal"
           >
             &times;
@@ -796,233 +489,47 @@ export default function PromotersPage() {
           <div className="edit-promoter-brands-panel">
             <div className="edit-promoter-brands-header">
               <div>
-                <h3>Brands</h3>
+                <h3>Active Promotion Brands</h3>
                 <p>
-                  Add another brand or move this promoter to a different brand.
+                  Brands are shown only when this promoter is assigned to an active
+                  promotion.
                 </p>
               </div>
               <BrandIcon />
             </div>
-            {isSystemBrandsError ? (
-              <p className="brand-file-error" role="alert">
-                Unable to load brand names right now.
-              </p>
-            ) : null}
 
             {isLoadingBrands ? (
               <p className="edit-promoter-brand-empty">Loading brands...</p>
             ) : editingPromoterBrands.length ? (
               <div className="edit-promoter-brand-list">
-                {editingPromoterBrands.map((brand) => {
-                  const isEditingBrand = activeBrandEditorId === String(brand.id);
-                  const hasOpenBrandEditor = Boolean(activeBrandEditorId);
-
-                  return (
-                    <div
-                      className={`edit-promoter-brand-row ${
-                        isEditingBrand ? "is-editing" : "is-collapsed"
-                      }`}
-                      key={brand.id}
-                    >
-                      {isEditingBrand ? (
-                        <>
-                          <div className="brand-row-main">
-                            <label htmlFor={`brandName-${brand.id}`}>Brand</label>
-                            <BrandLogoSelect
-                              id={`brandName-${brand.id}`}
-                              value={brandDraftNames[brand.id] ?? ""}
-                              brands={systemBrands}
-                              disabled={isBrandBusy || isLoadingSystemBrands}
-                              isLoading={isLoadingSystemBrands}
-                              onChange={(brandName) =>
-                                setBrandDraftNames((currentDrafts) => ({
-                                  ...currentDrafts,
-                                  [brand.id]: brandName,
-                                }))
-                              }
-                            />
-                          </div>
-                          <div className="brand-row-actions">
-                            <label className="brand-file-control">
-                              <span>
-                                {brandDraftFiles[brand.id]?.name ||
-                                  (brand.promoUrl ? "Replace QR" : "Upload QR")}
-                              </span>
-                              <input
-                                type="file"
-                                accept={BRAND_QR_ACCEPT}
-                                disabled={isBrandBusy}
-                                onChange={(event) =>
-                                  handleBrandFileChange(
-                                    brand.id,
-                                    event.target.files?.[0] || null,
-                                  )
-                                }
-                              />
-                            </label>
-                            {brand.promoUrl ? (
-                              <a
-                                className="brand-qr-link"
-                                href={brand.promoUrl}
-                                target="_blank"
-                                rel="noreferrer"
-                              >
-                                View QR
-                              </a>
-                            ) : null}
-                            <button
-                              type="button"
-                              className="secondary-action-btn brand-save-btn"
-                              disabled={isBrandBusy}
-                              onClick={() => handleUpdateBrand(brand)}
-                            >
-                              Save
-                            </button>
-                            <button
-                              type="button"
-                              className="secondary-action-btn brand-cancel-btn"
-                              disabled={isBrandBusy}
-                              onClick={closeBrandEditor}
-                            >
-                              Cancel
-                            </button>
-                            <button
-                              type="button"
-                              className="secondary-action-btn brand-delete-btn"
-                              disabled={isBrandBusy}
-                              onClick={() => handleDeleteBrand(brand)}
-                            >
-                              Delete
-                            </button>
-                          </div>
-                        </>
-                      ) : (
-                        <>
-                          <div className="brand-collapsed-copy">
-                            <span className="brand-name">{brand.name || "Untitled brand"}</span>
-                            <span className="brand-qr-status">
-                              {brand.promoUrl ? "QR code attached" : "No QR code"}
-                            </span>
-                          </div>
-                          <div className="brand-row-actions">
-                            {brand.promoUrl ? (
-                              <a
-                                className="brand-qr-link"
-                                href={brand.promoUrl}
-                                target="_blank"
-                                rel="noreferrer"
-                              >
-                                View QR
-                              </a>
-                            ) : null}
-                            <button
-                              type="button"
-                              className="secondary-action-btn brand-save-btn"
-                              disabled={hasOpenBrandEditor || isBrandBusy}
-                              onClick={() => openBrandEditor(brand)}
-                              title={
-                                hasOpenBrandEditor
-                                  ? "Save or cancel the open brand editor first"
-                                  : "Edit brand"
-                              }
-                            >
-                              Edit
-                            </button>
-                            <button
-                              type="button"
-                              className="secondary-action-btn brand-delete-btn"
-                              disabled={hasOpenBrandEditor || isBrandBusy}
-                              onClick={() => handleDeleteBrand(brand)}
-                              title={
-                                hasOpenBrandEditor
-                                  ? "Save or cancel the open brand editor first"
-                                  : "Delete brand"
-                              }
-                            >
-                              Delete
-                            </button>
-                          </div>
-                        </>
-                      )}
+                {editingPromoterBrands.map((brand) => (
+                  <div className="edit-promoter-brand-row is-collapsed" key={brand.id}>
+                    <div className="brand-collapsed-copy">
+                      <span className="brand-name">{brand.name || "Untitled brand"}</span>
+                      <span className="brand-qr-status">
+                        {brand.promoUrl ? "QR code attached" : "No QR code"}
+                      </span>
                     </div>
-                  );
-                })}
+                    <div className="brand-row-actions">
+                      {brand.promoUrl ? (
+                        <a
+                          className="brand-qr-link"
+                          href={brand.promoUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          View QR
+                        </a>
+                      ) : null}
+                    </div>
+                  </div>
+                ))}
               </div>
             ) : (
-              <p className="edit-promoter-brand-empty">No brands added yet.</p>
-            )}
-
-            {activeBrandEditorId === NEW_BRAND_EDITOR_ID ? (
-              <div className="edit-promoter-brand-add is-editing">
-                <div className="brand-row-main">
-                  <label htmlFor="newBrandName">New Brand</label>
-                  <BrandLogoSelect
-                    id="newBrandName"
-                    value={newBrandName}
-                    brands={systemBrands}
-                    disabled={isBrandBusy || isLoadingSystemBrands}
-                    isLoading={isLoadingSystemBrands}
-                    onChange={setNewBrandName}
-                  />
-                </div>
-                <div className="brand-row-actions">
-                  <label className="brand-file-control">
-                    <span>{newBrandFile?.name || "Upload QR"}</span>
-                    <input
-                      type="file"
-                      accept={BRAND_QR_ACCEPT}
-                      disabled={isBrandBusy}
-                      onChange={(event) =>
-                        handleNewBrandFileChange(event.target.files?.[0] || null)
-                      }
-                    />
-                  </label>
-                  <button
-                    type="button"
-                    className="secondary-action-btn brand-save-btn"
-                    disabled={isBrandBusy}
-                    onClick={handleAddBrand}
-                  >
-                    {isCreatingBrand ? "Adding..." : "Save"}
-                  </button>
-                  <button
-                    type="button"
-                    className="secondary-action-btn brand-cancel-btn"
-                    disabled={isBrandBusy}
-                    onClick={closeBrandEditor}
-                  >
-                    Cancel
-                  </button>
-                </div>
-                {brandFileError ? (
-                  <p className="brand-file-error" role="alert">
-                    {brandFileError}
-                  </p>
-                ) : null}
-              </div>
-            ) : (
-              <div className="brand-add-closed">
-                <button
-                  type="button"
-                  className="secondary-action-btn brand-add-btn"
-                  disabled={Boolean(activeBrandEditorId) || isBrandBusy}
-                  onClick={openNewBrandEditor}
-                  title={
-                    activeBrandEditorId
-                      ? "Save or cancel the open brand editor first"
-                      : "Add another brand"
-                  }
-                >
-                  Add Brand
-                </button>
-              </div>
-            )}
-
-            {brandFileError && activeBrandEditorId !== NEW_BRAND_EDITOR_ID ? (
-              <p className="brand-file-error" role="alert">
-                {brandFileError}
+              <p className="edit-promoter-brand-empty">
+                No active promotion brands assigned.
               </p>
-            ) : null}
+            )}
           </div>
           <div className="edit-promoter-password-panel">
             <div>

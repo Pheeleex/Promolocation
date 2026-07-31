@@ -3,12 +3,14 @@ import { useMemo, useState } from "react";
 import Swal from "sweetalert2";
 import AppLayout from "../components/AppLayout";
 import Modal from "../components/Modal";
+import Pagination from "../components/Pagination";
 import {
   useCreateSystemBrand,
   useDeleteSystemBrand,
   useManagedSystemBrands,
   useUpdateSystemBrand,
 } from "../hooks/use-promoters-brands";
+import { useTablePagination } from "../hooks/use-table-pagination";
 import { validateImageUpload } from "../utils/imageUploadValidation";
 
 const BRAND_LOGO_ACCEPT = ".jpg,.jpeg,.png,.gif,.webp,.svg";
@@ -93,6 +95,12 @@ export default function BrandsPage() {
         .includes(normalizedSearchTerm),
     );
   }, [brands, searchTerm]);
+  const {
+    currentPage,
+    paginatedItems: paginatedBrands,
+    setCurrentPage,
+    totalPages,
+  } = useTablePagination(filteredBrands, [searchTerm, brands.length]);
 
   const openCreateModal = () => {
     setEditingBrand({ mode: "create" });
@@ -292,8 +300,8 @@ export default function BrandsPage() {
                       Loading brands...
                     </td>
                   </tr>
-                ) : filteredBrands.length ? (
-                  filteredBrands.map((brand) => (
+                ) : paginatedBrands.length ? (
+                  paginatedBrands.map((brand) => (
                     <tr key={brand.id}>
                       <td>
                         <div className="brand-admin-name-cell">
@@ -326,7 +334,7 @@ export default function BrandsPage() {
                             disabled={isDeletingBrand}
                             onClick={() => handleDeleteBrand(brand)}
                           >
-                            Delete
+                            {isDeletingBrand ? "Deleting..." : "Delete"}
                           </button>
                         </div>
                       </td>
@@ -343,6 +351,13 @@ export default function BrandsPage() {
             </table>
           </div>
         )}
+        <div className="card-footer">
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+          />
+        </div>
       </div>
 
       <Modal
@@ -359,6 +374,7 @@ export default function BrandsPage() {
             type="button"
             className="close-modal"
             aria-label="Close brand modal"
+            disabled={isSaving}
             onClick={closeModal}
           >
             &times;
@@ -441,7 +457,12 @@ export default function BrandsPage() {
           ) : null}
 
           <div className="brand-admin-form-actions">
-            <button type="button" className="brand-admin-secondary-btn" onClick={closeModal}>
+            <button
+              type="button"
+              className="brand-admin-secondary-btn"
+              disabled={isSaving}
+              onClick={closeModal}
+            >
               Cancel
             </button>
             <button type="submit" className="brand-admin-primary-btn" disabled={isSaving}>

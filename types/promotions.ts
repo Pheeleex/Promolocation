@@ -38,6 +38,9 @@ export type PromotionAssignment = {
   promoterId: string;
   brandName: string;
   qrPath: string;
+  brandImageUrl?: string | null;
+  promotionName?: string | null;
+  promotionActive?: boolean;
   createdAt?: string;
 };
 
@@ -69,7 +72,6 @@ export type CreatePromotionPayload = {
   endDate: string;
   status: PromotionStatus;
   isActive?: boolean;
-  promotionImage?: File | null;
 };
 
 export type UpdatePromotionPayload = {
@@ -80,7 +82,6 @@ export type UpdatePromotionPayload = {
   endDate?: string;
   status?: PromotionStatus;
   isActive?: boolean;
-  promotionImage?: File | null;
 };
 
 export type DeletePromotionPayload = {
@@ -95,4 +96,29 @@ export type UploadPromotionQrCodesResponse = {
   status: number | string;
   message: string;
   [key: string]: unknown;
+};
+
+export type RawPromotionBrand = {
+  id: ApiId;
+  promoter_id?: string | null;
+  brand?: string | null;
+  promo_URL?: string | null;
+  brand_image?: string | null;
+  promotion_code?: string | null;
+  promotion_name?: string | null;
+  promotion_active?: number | string | boolean | null;
+  created_at?: string | null;
+};
+
+export type GetPromotionBrandsPayload = {
+  promotionCode: string;
+};
+
+export type GetPromotionBrandsResponse = {
+  status: number | string;
+  message: string;
+  promotion_code?: string | null;
+  promotion_name?: string | null;
+  total: number;
+  brands: RawPromotionBrand[];
 };

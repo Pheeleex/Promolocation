@@ -4,6 +4,8 @@ import {
   CreatePromoterBrandPayload,
   DeleteSystemBrandPayload,
   DeletePromoterBrandPayload,
+  GetPromoterBrandsPayload,
+  GetPromoterBrandsResponse,
   GetSystemBrandsResponse,
   ImportBrandsCategoryPayload,
   ImportBrandsCategoryResponse,
@@ -23,6 +25,7 @@ import { assertApiSuccess } from "./response";
 
 const CREATE_PROMOTER_BRAND_PATH = "/create_promoter_brand";
 const MANAGE_PROMOTER_BRAND_PATH = "/manage_promoter_brand";
+const GET_PROMOTER_BRANDS_PATH = "/get_promoter_brands";
 const GET_SYSTEM_BRANDS_PATH = "/get_system_brands";
 const MANAGE_SYSTEM_BRANDS_PATH = "/manage_brands";
 const IMPORT_BRANDS_CATEGORY_PATH = "/import_brands_category";
@@ -74,6 +77,24 @@ export async function getSystemBrands(): Promise<SystemBrand[]> {
   return response.brands
     .map(mapSystemBrand)
     .filter((brand): brand is SystemBrand => Boolean(brand));
+}
+
+export async function getPromoterBrands(
+  payload: GetPromoterBrandsPayload,
+): Promise<PromoterBrand[]> {
+  const response = assertApiSuccess(
+    await authenticatedAdminPost<GetPromoterBrandsResponse>(
+      GET_PROMOTER_BRANDS_PATH,
+      {
+        promoter_id: payload.promoterId,
+      },
+    ),
+  );
+  const brands = Array.isArray(response)
+    ? response
+    : response.brands || response.data || [];
+
+  return brands.map(mapPromoterBrand);
 }
 
 function mapSystemBrands(brands?: RawSystemBrand[]): SystemBrand[] {
@@ -174,10 +195,6 @@ export async function importBrandsCategory(
   const formData = new FormData();
 
   formData.set("file", payload.file);
-
-  if (payload.promoId) {
-    formData.set("promoId", payload.promoId);
-  }
 
   return assertApiSuccess(
     await authenticatedAdminFormPost<ImportBrandsCategoryResponse>(

@@ -80,7 +80,6 @@ export type DeleteSystemBrandPayload = {
 
 export type ImportBrandsCategoryPayload = {
   file: File;
-  promoId?: string;
 };
 
 export type ImportBrandsCategoryResult = {
@@ -124,6 +123,17 @@ export type UpdatePromoterBrandPayload = {
 export type DeletePromoterBrandPayload = {
   id: ApiId;
   promoterId: string;
+};
+
+export type GetPromoterBrandsPayload = {
+  promoterId: string;
+};
+
+export type GetPromoterBrandsResponse = {
+  status?: number | string;
+  message?: string;
+  brands?: RawPromoterBrand[];
+  data?: RawPromoterBrand[];
 };
 
 

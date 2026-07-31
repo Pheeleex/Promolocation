@@ -8,7 +8,6 @@ import BrandsPage from "./pages/BrandsPage";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 import IncidentDetailPage from "./pages/IncidentDetailPage";
 import IncidentHistoryPage from "./pages/IncidentHistoryPage";
-import ImportBrandsPage from "./pages/ImportBrandsPage";
 import LoginPage from "./pages/LoginPage";
 import PromotionsPage from "./pages/PromotionsPage";
 import PromotersPage from "./pages/PromotersPage";
@@ -63,18 +62,18 @@ function AppRoutes() {
         }
       />
       <Route
-        path="/promotions/:promotionId"
+        path="/promotions/active"
         element={
           <ProtectedRoute disallowSpecialAdmin>
-            <PromotionsPage />
+            <PromotionsPage activePromotionOnly />
           </ProtectedRoute>
         }
       />
       <Route
-        path="/promoters/import-brands"
+        path="/promotions/:promotionId"
         element={
           <ProtectedRoute disallowSpecialAdmin>
-            <ImportBrandsPage />
+            <PromotionsPage />
           </ProtectedRoute>
         }
       />

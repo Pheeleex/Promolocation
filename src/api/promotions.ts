@@ -1,11 +1,15 @@
 import type {
   CreatePromotionPayload,
   DeletePromotionPayload,
+  GetPromotionBrandsPayload,
+  GetPromotionBrandsResponse,
   ListPromotionsPayload,
   ListPromotionsResponse,
   ManagePromotionResponse,
   Promotion,
+  PromotionAssignment,
   PromotionStatus,
+  RawPromotionBrand,
   RawPromotion,
   UpdatePromotionPayload,
   UploadPromotionQrCodesPayload,
@@ -19,6 +23,7 @@ import { assertApiSuccess } from "./response";
 
 const MANAGE_PROMOTIONS_PATH = "/manage_promotions";
 const UPLOAD_QR_CODES_BULK_PATH = "/upload_qr_codes_bulk";
+const GET_BRANDS_BY_PROMOTION_PATH = "/get_brands_by_promotion";
 
 function normalizeIsActive(isActive: RawPromotion["is_active"], status?: string | null) {
   if (isActive === true || isActive === 1 || isActive === "1") {
@@ -43,6 +48,10 @@ function normalizePromotionStatus(status?: string | null): PromotionStatus {
   }
 
   return "inactive";
+}
+
+function normalizePromotionActive(isActive: RawPromotionBrand["promotion_active"]) {
+  return isActive === true || isActive === 1 || isActive === "1";
 }
 
 function resolvePromotionStatus(
@@ -101,6 +110,20 @@ export function mapPromotion(promotion: RawPromotion): Promotion {
   };
 }
 
+function mapPromotionBrand(brand: RawPromotionBrand): PromotionAssignment {
+  return {
+    id: brand.id,
+    promoterId: brand.promoter_id || "",
+    brandName: brand.brand || "",
+    qrPath: brand.promo_URL || "",
+    brandImageUrl: brand.brand_image || null,
+    promotionCode: brand.promotion_code || "",
+    promotionName: brand.promotion_name || null,
+    promotionActive: normalizePromotionActive(brand.promotion_active),
+    createdAt: brand.created_at || "",
+  };
+}
+
 function buildPromotionFormData(
   payload: CreatePromotionPayload | UpdatePromotionPayload,
   functionType: "create" | "update",
@@ -135,10 +158,6 @@ function buildPromotionFormData(
 
   if (payload.isActive !== undefined) {
     formData.set("is_active", payload.isActive ? "1" : "0");
-  }
-
-  if (payload.promotionImage) {
-    formData.set("promotion_image", payload.promotionImage);
   }
 
   return formData;
@@ -221,4 +240,19 @@ export async function uploadPromotionQrCodesBulk(
       formData,
     ),
   );
+}
+
+export async function getBrandsByPromotion(
+  payload: GetPromotionBrandsPayload,
+): Promise<PromotionAssignment[]> {
+  const response = assertApiSuccess(
+    await authenticatedAdminPost<GetPromotionBrandsResponse>(
+      GET_BRANDS_BY_PROMOTION_PATH,
+      {
+        promotion_code: payload.promotionCode,
+      },
+    ),
+  );
+
+  return (response.brands || []).map(mapPromotionBrand);
 }

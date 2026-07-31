@@ -33,7 +33,6 @@ function drawImageToCanvas(image) {
   canvas.width = width;
   canvas.height = height;
   context.drawImage(image, 0, 0, width, height);
-
   return context.getImageData(0, 0, width, height);
 }
 

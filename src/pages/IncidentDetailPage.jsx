@@ -4,6 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useParams } from "react-router-dom";
 import Swal from "sweetalert2";
 import AppLayout from "../components/AppLayout";
+import Pagination from "../components/Pagination";
 import {
   getIncidentsQueryKey,
   useIncidents,
@@ -14,6 +15,7 @@ import {
   getIncidentAuditTrailQueryKey,
   useIncidentAuditTrail,
 } from "../hooks/use-incident-audit-trail";
+import { useTablePagination } from "../hooks/use-table-pagination";
 import { useAutoResizeTextarea } from "../hooks/use-auto-resize-textarea";
 import { useAuthStore } from "../store/auth-store";
 import { isSpecialAdminUser } from "../utils/authAccess";
@@ -145,6 +147,12 @@ export default function IncidentDetailPage() {
     promoters.find((promoter) => promoter.promoterId === incident?.promoterId)
       ?.promoterCode || "";
   const { data: auditTrail = [] } = useIncidentAuditTrail(incident);
+  const {
+    currentPage: auditTrailPage,
+    paginatedItems: paginatedAuditTrail,
+    setCurrentPage: setAuditTrailPage,
+    totalPages: auditTrailTotalPages,
+  } = useTablePagination(auditTrail, [incident?.id, auditTrail.length]);
   const statusColor = getIncidentStatusColor(incident?.status);
   const isSpecialAdmin = isSpecialAdminUser(authUser);
   const availableStatusOptions = getAvailableIncidentStatusOptions(
@@ -497,8 +505,8 @@ export default function IncidentDetailPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {auditTrail.length ? (
-                    auditTrail.map((auditEntry) => (
+                  {paginatedAuditTrail.length ? (
+                    paginatedAuditTrail.map((auditEntry) => (
                       <tr key={auditEntry.id}>
                         <td>{auditEntry.userId}</td>
                         <td>{auditEntry.action}</td>
@@ -517,6 +525,13 @@ export default function IncidentDetailPage() {
                   )}
                 </tbody>
               </table>
+            </div>
+            <div className="card-footer audit-trail-footer">
+              <Pagination
+                currentPage={auditTrailPage}
+                totalPages={auditTrailTotalPages}
+                onPageChange={setAuditTrailPage}
+              />
             </div>
           </div>
         </div>

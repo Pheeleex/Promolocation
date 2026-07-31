@@ -3,27 +3,41 @@ import { useMemo, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import Swal from "sweetalert2";
 import AppLayout from "../components/AppLayout";
+import {
+  Button,
+  DateInput,
+  SelectInput,
+  TextArea,
+  TextInput,
+} from "../components/FormControls";
 import Modal from "../components/Modal";
+import Pagination from "../components/Pagination";
 import {
   useCreatePromotion,
-  useDeletePromotion,
+  usePromotionBrands,
   usePromotions,
   useUpdatePromotion,
   useUploadPromotionQrCodesBulk,
 } from "../hooks/use-promotions";
 import { useImportBrandsCategory } from "../hooks/use-promoters-brands";
+import { useTablePagination } from "../hooks/use-table-pagination";
 
 const EMPTY_PROMOTION_FORM = {
   name: "",
   description: "",
   startDate: "",
   endDate: "",
-  status: "draft",
-  promotionImage: null,
+  status: "",
 };
 const PROMOTION_UPLOAD_FILE_BASENAME = "Promotion Management";
 const PROMOTION_UPLOAD_ACCEPT = ".csv,.xlsx,.xls";
 const PROMOTION_QR_ZIP_ACCEPT = ".zip";
+const PROMOTION_STATUS_OPTIONS = [
+  { label: "Draft", value: "draft" },
+  { label: "Active", value: "active" },
+  { label: "Inactive", value: "inactive" },
+  { label: "Expired", value: "expired" },
+];
 
 function formatDate(value) {
   if (!value) {
@@ -72,6 +86,12 @@ function getPromotionState(promotion) {
   return { label: "Active", className: "is-active" };
 }
 
+function canManagePromotion(promotion) {
+  const state = getPromotionState(promotion);
+
+  return state.label === "Active" || state.label === "Scheduled";
+}
+
 function getPromotionCode(promotion) {
   return promotion?.promotionCode || String(promotion?.id || "");
 }
@@ -89,13 +109,242 @@ function getFileBaseName(fileName) {
     : normalizedFileName;
 }
 
+function escapeXml(value) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function createCrc32Table() {
+  return Array.from({ length: 256 }, (_, index) => {
+    let value = index;
+
+    for (let bit = 0; bit < 8; bit += 1) {
+      value = value & 1 ? 0xedb88320 ^ (value >>> 1) : value >>> 1;
+    }
+
+    return value >>> 0;
+  });
+}
+
+const CRC32_TABLE = createCrc32Table();
+
+function getCrc32(bytes) {
+  let crc = 0xffffffff;
+
+  for (const byte of bytes) {
+    crc = CRC32_TABLE[(crc ^ byte) & 0xff] ^ (crc >>> 8);
+  }
+
+  return (crc ^ 0xffffffff) >>> 0;
+}
+
+function createZipBlob(files) {
+  const encoder = new TextEncoder();
+  const chunks = [];
+  const centralDirectoryChunks = [];
+  let offset = 0;
+
+  const writeUint16 = (value) => [value & 0xff, (value >>> 8) & 0xff];
+  const writeUint32 = (value) => [
+    value & 0xff,
+    (value >>> 8) & 0xff,
+    (value >>> 16) & 0xff,
+    (value >>> 24) & 0xff,
+  ];
+  const today = new Date();
+  const zipTime =
+    (today.getHours() << 11) | (today.getMinutes() << 5) | (today.getSeconds() / 2);
+  const zipDate =
+    ((today.getFullYear() - 1980) << 9) |
+    ((today.getMonth() + 1) << 5) |
+    today.getDate();
+
+  files.forEach(({ name, content }) => {
+    const nameBytes = encoder.encode(name);
+    const contentBytes = encoder.encode(content);
+    const crc = getCrc32(contentBytes);
+    const localHeader = new Uint8Array([
+      ...writeUint32(0x04034b50),
+      ...writeUint16(20),
+      ...writeUint16(0),
+      ...writeUint16(0),
+      ...writeUint16(zipTime),
+      ...writeUint16(zipDate),
+      ...writeUint32(crc),
+      ...writeUint32(contentBytes.length),
+      ...writeUint32(contentBytes.length),
+      ...writeUint16(nameBytes.length),
+      ...writeUint16(0),
+    ]);
+    const centralDirectoryHeader = new Uint8Array([
+      ...writeUint32(0x02014b50),
+      ...writeUint16(20),
+      ...writeUint16(20),
+      ...writeUint16(0),
+      ...writeUint16(0),
+      ...writeUint16(zipTime),
+      ...writeUint16(zipDate),
+      ...writeUint32(crc),
+      ...writeUint32(contentBytes.length),
+      ...writeUint32(contentBytes.length),
+      ...writeUint16(nameBytes.length),
+      ...writeUint16(0),
+      ...writeUint16(0),
+      ...writeUint16(0),
+      ...writeUint16(0),
+      ...writeUint32(0),
+      ...writeUint32(offset),
+    ]);
+
+    chunks.push(localHeader, nameBytes, contentBytes);
+    centralDirectoryChunks.push(centralDirectoryHeader, nameBytes);
+    offset += localHeader.length + nameBytes.length + contentBytes.length;
+  });
+
+  const centralDirectoryOffset = offset;
+  const centralDirectorySize = centralDirectoryChunks.reduce(
+    (size, chunk) => size + chunk.length,
+    0,
+  );
+  const endOfCentralDirectory = new Uint8Array([
+    ...writeUint32(0x06054b50),
+    ...writeUint16(0),
+    ...writeUint16(0),
+    ...writeUint16(files.length),
+    ...writeUint16(files.length),
+    ...writeUint32(centralDirectorySize),
+    ...writeUint32(centralDirectoryOffset),
+    ...writeUint16(0),
+  ]);
+
+  return new Blob([...chunks, ...centralDirectoryChunks, endOfCentralDirectory], {
+    type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  });
+}
+
+function createPromotionWorkbookTemplateBlob(promotionCode) {
+  const worksheetXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+  <dimension ref="A1:D2"/>
+  <sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>
+  <cols><col min="1" max="1" width="22" customWidth="1"/><col min="2" max="2" width="22" customWidth="1"/><col min="3" max="3" width="24" customWidth="1"/><col min="4" max="4" width="28" customWidth="1"/></cols>
+  <sheetData>
+    <row r="1">
+      <c r="A1" t="inlineStr" s="1"><is><t>promotion_code</t></is></c>
+      <c r="B1" t="inlineStr" s="1"><is><t>promoter_code</t></is></c>
+      <c r="C1" t="inlineStr" s="1"><is><t>brand</t></is></c>
+      <c r="D1" t="inlineStr" s="1"><is><t>qr code</t></is></c>
+    </row>
+    <row r="2">
+      <c r="A2" t="inlineStr"><is><t>${escapeXml(promotionCode)}</t></is></c>
+      <c r="B2" t="inlineStr"><is><t></t></is></c>
+      <c r="C2" t="inlineStr"><is><t></t></is></c>
+      <c r="D2" t="inlineStr"><is><t></t></is></c>
+    </row>
+  </sheetData>
+</worksheet>`;
+
+  return createZipBlob([
+    {
+      name: "[Content_Types].xml",
+      content: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+  <Default Extension="xml" ContentType="application/xml"/>
+  <Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>
+  <Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>
+  <Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>
+  <Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/>
+  <Override PartName="/docProps/app.xml" ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml"/>
+</Types>`,
+    },
+    {
+      name: "_rels/.rels",
+      content: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>
+  <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties" Target="docProps/core.xml"/>
+  <Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/extended-properties" Target="docProps/app.xml"/>
+</Relationships>`,
+    },
+    {
+      name: "docProps/app.xml",
+      content: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties" xmlns:vt="http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes">
+  <Application>Promolocation</Application>
+</Properties>`,
+    },
+    {
+      name: "docProps/core.xml",
+      content: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:dcmitype="http://purl.org/dc/dcmitype/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <dc:title>Promotion Management Template</dc:title>
+  <dc:creator>Promolocation</dc:creator>
+  <cp:lastModifiedBy>Promolocation</cp:lastModifiedBy>
+</cp:coreProperties>`,
+    },
+    {
+      name: "xl/workbook.xml",
+      content: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+  <sheets>
+    <sheet name="Promotion Management" sheetId="1" r:id="rId1"/>
+  </sheets>
+</workbook>`,
+    },
+    {
+      name: "xl/_rels/workbook.xml.rels",
+      content: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>
+  <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>
+</Relationships>`,
+    },
+    {
+      name: "xl/styles.xml",
+      content: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+  <fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font></fonts>
+  <fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills>
+  <borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders>
+  <cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
+  <cellXfs count="2"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/></cellXfs>
+</styleSheet>`,
+    },
+    {
+      name: "xl/worksheets/sheet1.xml",
+      content: worksheetXml,
+    },
+  ]);
+}
+
+function downloadPromotionWorkbookTemplate(promotionCode) {
+  const blob = createPromotionWorkbookTemplateBlob(promotionCode);
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+
+  link.href = url;
+  link.download = `${PROMOTION_UPLOAD_FILE_BASENAME}.xlsx`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
 function validatePromotionUploadFileName(file) {
   if (!file) {
     return "Choose the Promotion Management file.";
   }
 
-  if (getFileBaseName(file.name) !== PROMOTION_UPLOAD_FILE_BASENAME) {
-    return `The file name must be ${PROMOTION_UPLOAD_FILE_BASENAME}.`;
+  const allowedFileNamePattern = new RegExp(
+    `^${PROMOTION_UPLOAD_FILE_BASENAME.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}( \\([1-9][0-9]*\\))?$`,
+  );
+
+  if (!allowedFileNamePattern.test(getFileBaseName(file.name))) {
+    return `The file name must be ${PROMOTION_UPLOAD_FILE_BASENAME}, or a numbered browser copy like ${PROMOTION_UPLOAD_FILE_BASENAME} (1).`;
   }
 
   return "";
@@ -111,6 +360,70 @@ function validatePromotionQrZipFile(file) {
   }
 
   return "";
+}
+
+function formatUploadDate(value) {
+  if (!value) {
+    return "";
+  }
+
+  return new Intl.DateTimeFormat(undefined, {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  }).format(value);
+}
+
+function getQrUploadStatus(response, uploadedAt) {
+  if (!response) {
+    return "Not uploaded yet";
+  }
+
+  const uploadedCount = response.summary?.uploaded ?? 0;
+  const failedCount = response.summary?.failed ?? 0;
+  const warningCount = response.summary?.warnings ?? 0;
+  const parts = [`${uploadedCount} code${uploadedCount === 1 ? "" : "s"} uploaded`];
+
+  if (failedCount > 0) {
+    parts.push(`${failedCount} failed`);
+  }
+
+  if (warningCount > 0) {
+    parts.push(`${warningCount} warning${warningCount === 1 ? "" : "s"}`);
+  }
+
+  if (uploadedAt) {
+    parts.push(formatUploadDate(uploadedAt));
+  }
+
+  return parts.join(" · ");
+}
+
+function getWorkbookUploadStatus(response, uploadedAt) {
+  if (!response) {
+    return "Not uploaded yet";
+  }
+
+  const summary = response.summary || {};
+  const processedCount = summary.total ?? 0;
+  const importedCount = summary.imported ?? 0;
+  const updatedCount = summary.updated ?? 0;
+  const failedCount = summary.failed ?? 0;
+  const parts = [
+    `${processedCount} row${processedCount === 1 ? "" : "s"} processed`,
+    `${importedCount} imported`,
+    `${updatedCount} updated`,
+  ];
+
+  if (failedCount > 0) {
+    parts.push(`${failedCount} failed`);
+  }
+
+  if (uploadedAt) {
+    parts.push(formatUploadDate(uploadedAt));
+  }
+
+  return parts.join(" · ");
 }
 
 function hasSamePromotionId(firstId, secondId) {
@@ -144,14 +457,21 @@ function SearchIcon() {
 }
 
 function PromotionFormModal({
+  currentStatus = "",
   form,
   formError,
   isOpen,
   mode,
   onClose,
+  isSubmitting = false,
   onSubmit,
   setForm,
+  submitLabel,
 }) {
+  const statusOptions = PROMOTION_STATUS_OPTIONS.filter(
+    (option) => option.value !== currentStatus,
+  );
+
   return (
     <Modal
       isOpen={isOpen}
@@ -174,105 +494,80 @@ function PromotionFormModal({
       </div>
 
       <form className="promotion-form" onSubmit={onSubmit}>
-        <div className="form-group">
-          <label htmlFor="promotionName">Promotion Name</label>
-          <input
-            id="promotionName"
-            type="text"
-            value={form.name}
+        <TextInput
+          id="promotionName"
+          label="Promotion Name"
+          type="text"
+          value={form.name}
+          onChange={(event) =>
+            setForm((currentForm) => ({
+              ...currentForm,
+              name: event.target.value,
+            }))
+          }
+          placeholder="Summer Activation"
+        />
+
+        <TextArea
+          id="promotionDescription"
+          label="Description"
+          value={form.description}
+          onChange={(event) =>
+            setForm((currentForm) => ({
+              ...currentForm,
+              description: event.target.value,
+            }))
+          }
+          placeholder="What this promotion covers"
+          rows={4}
+        />
+
+        <div className="promotion-date-grid">
+          <DateInput
+            id="promotionStartDate"
+            label="Start Date"
+            value={form.startDate}
             onChange={(event) =>
               setForm((currentForm) => ({
                 ...currentForm,
-                name: event.target.value,
+                startDate: event.target.value,
               }))
             }
-            placeholder="Summer Activation"
           />
-        </div>
 
-        <div className="form-group">
-          <label htmlFor="promotionDescription">Description</label>
-          <textarea
-            id="promotionDescription"
-            value={form.description}
+          <DateInput
+            id="promotionEndDate"
+            label="End Date"
+            value={form.endDate}
             onChange={(event) =>
               setForm((currentForm) => ({
                 ...currentForm,
-                description: event.target.value,
+                endDate: event.target.value,
               }))
             }
-            placeholder="What this promotion covers"
-            rows={3}
           />
         </div>
 
-        <div className="promotion-date-grid">
-          <div className="form-group">
-            <label htmlFor="promotionStartDate">Start Date</label>
-            <input
-              id="promotionStartDate"
-              type="date"
-              value={form.startDate}
-              onChange={(event) =>
-                setForm((currentForm) => ({
-                  ...currentForm,
-                  startDate: event.target.value,
-                }))
-              }
-            />
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="promotionEndDate">End Date</label>
-            <input
-              id="promotionEndDate"
-              type="date"
-              value={form.endDate}
-              onChange={(event) =>
-                setForm((currentForm) => ({
-                  ...currentForm,
-                  endDate: event.target.value,
-                }))
-              }
-            />
-          </div>
-        </div>
-
-        <div className="promotion-date-grid">
-          <div className="form-group">
-            <label htmlFor="promotionStatus">Status</label>
-            <select
-              id="promotionStatus"
-              value={form.status}
-              onChange={(event) =>
-                setForm((currentForm) => ({
-                  ...currentForm,
-                  status: event.target.value,
-                }))
-              }
-            >
-              <option value="draft">Draft</option>
-              <option value="active">Active</option>
-              <option value="inactive">Inactive</option>
-              <option value="expired">Expired</option>
-            </select>
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="promotionImage">Promotion Image</label>
-            <input
-              id="promotionImage"
-              type="file"
-              accept=".jpg,.jpeg,.png,.gif,.webp"
-              onChange={(event) =>
-                setForm((currentForm) => ({
-                  ...currentForm,
-                  promotionImage: event.target.files?.[0] || null,
-                }))
-              }
-            />
-          </div>
-        </div>
+        {mode === "edit" ? (
+          <SelectInput
+            id="promotionStatus"
+            label="Change Status"
+            value={form.status}
+            onChange={(event) =>
+              setForm((currentForm) => ({
+                ...currentForm,
+                status: event.target.value,
+              }))
+            }
+          >
+            <option value="">Keep current status</option>
+            {statusOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </SelectInput>
+        ) : null}
 
         {formError ? (
           <p className="form-error-text" role="alert">
@@ -281,12 +576,22 @@ function PromotionFormModal({
         ) : null}
 
         <div className="brand-admin-form-actions">
-          <button type="button" className="brand-admin-secondary-btn" onClick={onClose}>
+          <Button
+            type="button"
+            variant="secondary"
+            className="brand-admin-secondary-btn"
+            disabled={isSubmitting}
+            onClick={onClose}
+          >
             Cancel
-          </button>
-          <button type="submit" className="brand-admin-primary-btn">
-            {mode === "create" ? "Create Promotion" : "Save Changes"}
-          </button>
+          </Button>
+          <Button
+            type="submit"
+            className="brand-admin-primary-btn"
+            disabled={isSubmitting}
+          >
+            {submitLabel || (mode === "create" ? "Create Promotion" : "Save Changes")}
+          </Button>
         </div>
       </form>
     </Modal>
@@ -304,9 +609,11 @@ function PromotionsListView() {
     isError,
     error,
   } = usePromotions();
-  const { mutateAsync: createPromotion } = useCreatePromotion();
-  const { mutateAsync: updatePromotion } = useUpdatePromotion();
-  const { mutateAsync: deletePromotionRequest } = useDeletePromotion();
+  const { mutateAsync: createPromotion, isPending: isCreatingPromotion } =
+    useCreatePromotion();
+  const { mutateAsync: updatePromotion, isPending: isUpdatingPromotion } =
+    useUpdatePromotion();
+  const isSavingPromotion = isCreatingPromotion || isUpdatingPromotion;
 
   const sortedPromotions = useMemo(() => sortPromotions(promotions), [promotions]);
   const activePromotion = useMemo(
@@ -328,6 +635,12 @@ function PromotionsListView() {
         .includes(normalizedSearchTerm),
     );
   }, [searchTerm, sortedPromotions]);
+  const {
+    currentPage,
+    paginatedItems: paginatedPromotions,
+    setCurrentPage,
+    totalPages,
+  } = useTablePagination(filteredPromotions, [searchTerm, promotions.length]);
 
   const openCreateModal = () => {
     setEditingPromotion({ mode: "create" });
@@ -342,8 +655,7 @@ function PromotionsListView() {
       description: promotion.description || "",
       startDate: promotion.startDate,
       endDate: promotion.endDate,
-      status: promotion.isActive ? "active" : promotion.status || "draft",
-      promotionImage: null,
+      status: "",
     });
     setFormError("");
   };
@@ -356,6 +668,10 @@ function PromotionsListView() {
 
   const savePromotion = async (event) => {
     event.preventDefault();
+
+    if (isSavingPromotion) {
+      return;
+    }
 
     const name = form.name.trim();
 
@@ -375,7 +691,8 @@ function PromotionsListView() {
     }
 
     const isCreating = editingPromotion?.mode === "create";
-    const isActive = form.status === "active";
+    const nextStatus = isCreating ? "draft" : form.status || editingPromotion.status;
+    const isActive = nextStatus === "active";
     const isActivatingDifferentPromotion =
       isActive &&
       activePromotion &&
@@ -395,21 +712,24 @@ function PromotionsListView() {
           description: form.description,
           startDate: form.startDate,
           endDate: form.endDate,
-          status: form.status,
-          isActive,
-          promotionImage: form.promotionImage,
+          status: "draft",
+          isActive: false,
         });
       } else {
-        await updatePromotion({
+        const updatePayload = {
           id: editingPromotion.id,
           name,
           description: form.description,
           startDate: form.startDate,
           endDate: form.endDate,
-          status: form.status,
-          isActive,
-          promotionImage: form.promotionImage,
-        });
+        };
+
+        if (form.status) {
+          updatePayload.status = form.status;
+          updatePayload.isActive = isActive;
+        }
+
+        await updatePromotion(updatePayload);
       }
 
       await Swal.fire({
@@ -430,35 +750,6 @@ function PromotionsListView() {
     }
   };
 
-  const deletePromotion = async (promotion) => {
-    console.log("Attempting to delete promotion:", promotion);
-    const result = await Swal.fire({
-      icon: "warning",
-      title: "Delete Promotion?",
-      text: `This will remove ${promotion.name}.`,
-      showCancelButton: true,
-      confirmButtonText: "Delete",
-      cancelButtonText: "Cancel",
-      confirmButtonColor: "#d33",
-    });
-
-    if (!result.isConfirmed) {
-      return;
-    }
-
-    try {
-      await deletePromotionRequest({ id: promotion.id });
-      console.log("Promotion deleted successfully:", promotion);
-    } catch (deleteError) {
-      await Swal.fire({
-        icon: "error",
-        title: "Unable to Delete Promotion",
-        text: deleteError?.message || "Something went wrong.",
-        confirmButtonColor: "#d33",
-      });
-    }
-  };
-
   return (
     <AppLayout activeNav="promotions">
       <div className="main-card promotions-card">
@@ -471,9 +762,16 @@ function PromotionsListView() {
               rows inside each promotion.
             </p>
           </div>
-          <button type="button" className="brand-admin-primary-btn" onClick={openCreateModal}>
-            Create Promotion
-          </button>
+          {!activePromotion ? (
+            <button
+              type="button"
+              className="brand-admin-primary-btn"
+              disabled={isSavingPromotion}
+              onClick={openCreateModal}
+            >
+              Create Promotion
+            </button>
+          ) : null}
         </div>
 
         <div className="brands-admin-toolbar">
@@ -514,8 +812,8 @@ function PromotionsListView() {
                     Loading promotions...
                   </td>
                 </tr>
-              ) : filteredPromotions.length ? (
-                filteredPromotions.map((promotion) => {
+              ) : paginatedPromotions.length ? (
+                paginatedPromotions.map((promotion) => {
                   const promotionState = getPromotionState(promotion);
 
                   return (
@@ -541,16 +839,20 @@ function PromotionsListView() {
                       </td>
                       <td className="actions-column">
                         <div className="brand-admin-actions">
-                          <Link to={`/promotions/${promotion.id}`}>Manage</Link>
+                          {canManagePromotion(promotion) ? (
+                            <Link to={`/promotions/${promotion.id}`}>Manage</Link>
+                          ) : (
+                            <button
+                              type="button"
+                              className="is-disabled"
+                              disabled
+                              title="Only active and scheduled promotions can be managed."
+                            >
+                              Manage
+                            </button>
+                          )}
                           <button type="button" onClick={() => openEditModal(promotion)}>
                             Edit
-                          </button>
-                          <button
-                            type="button"
-                            className="is-danger"
-                            onClick={() => deletePromotion(promotion)}
-                          >
-                            Delete
                           </button>
                         </div>
                       </td>
@@ -568,24 +870,163 @@ function PromotionsListView() {
           </table>
         </div>
         )}
+        <div className="card-footer">
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+          />
+        </div>
       </div>
 
       <PromotionFormModal
+        currentStatus={editingPromotion?.status || ""}
         form={form}
         formError={formError}
         isOpen={Boolean(editingPromotion)}
         mode={editingPromotion?.mode === "create" ? "create" : "edit"}
         onClose={closeModal}
+        isSubmitting={isSavingPromotion}
         onSubmit={savePromotion}
         setForm={setForm}
+        submitLabel={
+          isSavingPromotion
+            ? editingPromotion?.mode === "create"
+              ? "Creating Promotion..."
+              : "Saving Changes..."
+            : undefined
+        }
       />
     </AppLayout>
   );
 }
 
-function PromotionManagementView({ promotions }) {
+function UploadedPromoterBrandsTable({
+  isError,
+  isLoading,
+  promotion,
+  promotionBrands,
+  promotionBrandsError,
+  promoId,
+}) {
+  const {
+    currentPage,
+    paginatedItems: paginatedPromotionBrands,
+    setCurrentPage,
+    totalPages,
+  } = useTablePagination(promotionBrands, [promoId, promotionBrands.length]);
+
+  return (
+    <section className="promotion-assignment-panel">
+      <div className="promotion-assignment-panel-header">
+        <div>
+          <h3>Uploaded Promoter Brands</h3>
+          <p>
+            Rows currently assigned to promotion code {promoId}.
+          </p>
+        </div>
+        <span className="brands-admin-count">
+          {promotionBrands.length} rows
+        </span>
+      </div>
+
+      {isError ? (
+        <div className="brands-admin-state" role="alert">
+          {promotionBrandsError?.message || "Unable to load uploaded brands."}
+        </div>
+      ) : (
+        <div className="table-outer-border promotion-brands-table-wrap">
+          <table className="data-table promotion-brands-table">
+            <thead>
+              <tr>
+                <th>Promoter</th>
+                <th>Brand</th>
+                <th>QR Code</th>
+                <th>Created</th>
+              </tr>
+            </thead>
+            <tbody>
+              {isLoading ? (
+                <tr>
+                  <td colSpan="4" className="brands-admin-empty">
+                    Loading uploaded brands...
+                  </td>
+                </tr>
+              ) : paginatedPromotionBrands.length ? (
+                paginatedPromotionBrands.map((brand) => (
+                  <tr key={brand.id}>
+                    <td>
+                      <span className="promotion-code-pill">
+                        {brand.promoterId || "--"}
+                      </span>
+                    </td>
+                    <td>
+                      <div className="brand-admin-name-cell">
+                        <span className="brand-admin-logo">
+                          {brand.brandImageUrl ? (
+                            <img src={brand.brandImageUrl} alt="" />
+                          ) : (
+                            brand.brandName.slice(0, 1).toUpperCase() || "B"
+                          )}
+                        </span>
+                        <div>
+                          <strong>{brand.brandName || "--"}</strong>
+                          <span>{brand.promotionName || promotion.name}</span>
+                        </div>
+                      </div>
+                    </td>
+                    <td>
+                      {brand.qrPath ? (
+                        <a
+                          className="promotion-brand-qr-link"
+                          href={brand.qrPath}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          View QR
+                        </a>
+                      ) : (
+                        "--"
+                      )}
+                    </td>
+                    <td>{formatDate(brand.createdAt?.slice(0, 10))}</td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan="4" className="brands-admin-empty">
+                    No uploaded promoter-brand rows yet.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
+      <div className="card-footer">
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={setCurrentPage}
+        />
+      </div>
+    </section>
+  );
+}
+
+function PromotionManagementView({
+  isActivePromotionRoute = false,
+  isPromotionsError = false,
+  isPromotionsLoading = false,
+  promotions,
+  promotionsError,
+}) {
   const { promotionId } = useParams();
-  const promotion = promotions.find((currentPromotion) => currentPromotion.id === promotionId);
+  const promotion = isActivePromotionRoute
+    ? promotions.find((currentPromotion) => currentPromotion.isActive)
+    : promotions.find((currentPromotion) =>
+        hasSamePromotionId(currentPromotion.id, promotionId),
+      );
   const qrZipInputRef = useRef(null);
   const uploadInputRef = useRef(null);
   const [qrZipFile, setQrZipFile] = useState(null);
@@ -602,6 +1043,9 @@ function PromotionManagementView({ promotions }) {
   });
   const [qrUploadResponse, setQrUploadResponse] = useState(null);
   const [assignmentUploadResponse, setAssignmentUploadResponse] = useState(null);
+  const [qrUploadCompletedAt, setQrUploadCompletedAt] = useState(null);
+  const [workbookUploadCompletedAt, setWorkbookUploadCompletedAt] = useState(null);
+  const [dragTarget, setDragTarget] = useState(null);
   const { mutateAsync: uploadQrCodesBulk, isPending: isUploadingQrCodes } =
     useUploadPromotionQrCodesBulk();
   const {
@@ -609,13 +1053,46 @@ function PromotionManagementView({ promotions }) {
     isPending: isUploadingAssignments,
   } = useImportBrandsCategory();
   const promoId = getPromotionCode(promotion);
+  const {
+    data: promotionBrands = [],
+    isLoading: isLoadingPromotionBrands,
+    isError: isPromotionBrandsError,
+    error: promotionBrandsError,
+    refetch: refetchPromotionBrands,
+  } = usePromotionBrands(promoId, Boolean(promotion));
+
+  if (!promotion && isPromotionsLoading) {
+    return (
+      <AppLayout activeNav={isActivePromotionRoute ? "active-promotion" : "promotions"}>
+        <div className="main-card promotions-card">
+          <div className="brands-admin-state">
+            Loading promotion...
+          </div>
+        </div>
+      </AppLayout>
+    );
+  }
+
+  if (!promotion && isPromotionsError) {
+    return (
+      <AppLayout activeNav={isActivePromotionRoute ? "active-promotion" : "promotions"}>
+        <div className="main-card promotions-card">
+          <div className="brands-admin-state" role="alert">
+            {promotionsError?.message || "Unable to load promotions."}
+          </div>
+        </div>
+      </AppLayout>
+    );
+  }
 
   if (!promotion) {
     return (
-      <AppLayout activeNav="promotions">
+      <AppLayout activeNav={isActivePromotionRoute ? "active-promotion" : "promotions"}>
         <div className="main-card promotions-card">
           <div className="brands-admin-state">
-            <strong>Promotion not found.</strong>
+            <strong>
+              {isActivePromotionRoute ? "No active promotion found." : "Promotion not found."}
+            </strong>
             <Link to="/promotions" className="brand-admin-secondary-link">
               Back to Promotions
             </Link>
@@ -629,23 +1106,60 @@ function PromotionManagementView({ promotions }) {
   const isQrZipValid = qrZipValidation.status === "valid";
   const isUploadValid = uploadValidation.status === "valid";
 
-  const handleQrZipFileChange = (event) => {
-    const selectedFile = event.target.files?.[0] || null;
+  if (!isActivePromotionRoute && !canManagePromotion(promotion)) {
+    return (
+      <AppLayout activeNav="promotions">
+        <div className="main-card promotions-card">
+          <div className="brands-admin-state promotion-management-blocked">
+            <strong>{promotion.name} cannot be managed.</strong>
+            <span>
+              Only active and scheduled promotions can upload QR codes or manage
+              promoter-brand rows.
+            </span>
+            <Link to="/promotions" className="brand-admin-secondary-link">
+              Back to Promotions
+            </Link>
+          </div>
+        </div>
+      </AppLayout>
+    );
+  }
+
+  if (isActivePromotionRoute) {
+    return (
+      <AppLayout activeNav="active-promotion">
+        <div className="main-card promotions-card active-promotion-card">
+          <UploadedPromoterBrandsTable
+            isError={isPromotionBrandsError}
+            isLoading={isLoadingPromotionBrands}
+            promotion={promotion}
+            promotionBrands={promotionBrands}
+            promotionBrandsError={promotionBrandsError}
+            promoId={promoId}
+          />
+        </div>
+      </AppLayout>
+    );
+  }
+
+  const prepareQrZipFile = (selectedFile) => {
     const validationError = validatePromotionQrZipFile(selectedFile);
 
     setQrZipFile(selectedFile);
-    setQrUploadResponse(null);
     setQrZipValidation({
       error: validationError,
       payload:
         selectedFile && !validationError
           ? {
-              promoId,
               file: selectedFile,
             }
           : null,
       status: selectedFile && !validationError ? "valid" : "invalid",
     });
+  };
+
+  const handleQrZipFileChange = (event) => {
+    prepareQrZipFile(event.target.files?.[0] || null);
   };
 
   const clearQrZipFile = () => {
@@ -656,29 +1170,31 @@ function PromotionManagementView({ promotions }) {
       status: "idle",
     });
     setQrUploadResponse(null);
+    setQrUploadCompletedAt(null);
 
     if (qrZipInputRef.current) {
       qrZipInputRef.current.value = "";
     }
   };
 
-  const handleUploadFileChange = (event) => {
-    const selectedFile = event.target.files?.[0] || null;
+  const prepareUploadFile = (selectedFile) => {
     const validationError = validatePromotionUploadFileName(selectedFile);
 
     setUploadFile(selectedFile);
-    setAssignmentUploadResponse(null);
     setUploadValidation({
       error: validationError,
       payload:
         selectedFile && !validationError
           ? {
-              promoId,
               file: selectedFile,
             }
           : null,
       status: selectedFile && !validationError ? "valid" : "invalid",
     });
+  };
+
+  const handleUploadFileChange = (event) => {
+    prepareUploadFile(event.target.files?.[0] || null);
   };
 
   const clearUploadFile = () => {
@@ -689,14 +1205,55 @@ function PromotionManagementView({ promotions }) {
       status: "idle",
     });
     setAssignmentUploadResponse(null);
+    setWorkbookUploadCompletedAt(null);
 
     if (uploadInputRef.current) {
       uploadInputRef.current.value = "";
     }
   };
 
+  const handleDropzoneKeyDown = (event, inputRef) => {
+    if (event.key !== "Enter" && event.key !== " ") {
+      return;
+    }
+
+    event.preventDefault();
+    inputRef.current?.click();
+  };
+
+  const handleDropzoneDragOver = (event, target) => {
+    event.preventDefault();
+    setDragTarget(target);
+  };
+
+  const handleDropzoneDragLeave = (event, target) => {
+    if (event.currentTarget.contains(event.relatedTarget)) {
+      return;
+    }
+
+    setDragTarget((currentTarget) => (currentTarget === target ? null : currentTarget));
+  };
+
+  const handleQrZipDrop = (event) => {
+    event.preventDefault();
+    setDragTarget(null);
+    const selectedFile = event.dataTransfer.files?.[0] || null;
+    prepareQrZipFile(selectedFile);
+  };
+
+  const handleWorkbookDrop = (event) => {
+    event.preventDefault();
+    setDragTarget(null);
+    const selectedFile = event.dataTransfer.files?.[0] || null;
+    prepareUploadFile(selectedFile);
+  };
+
   const handlePreparedUpload = async (event) => {
     event.preventDefault();
+
+    if (isUploadingQrCodes) {
+      return;
+    }
 
     if (!isQrZipValid) {
       setQrZipValidation((currentValidation) => ({
@@ -713,6 +1270,7 @@ function PromotionManagementView({ promotions }) {
       });
 
       setQrUploadResponse(response);
+      setQrUploadCompletedAt(new Date());
 
       await Swal.fire({
         icon: "success",
@@ -731,6 +1289,10 @@ function PromotionManagementView({ promotions }) {
   };
 
   const handleAssignmentUpload = async () => {
+    if (isUploadingAssignments) {
+      return;
+    }
+
     if (!isUploadValid) {
       setUploadValidation((currentValidation) => ({
         ...currentValidation,
@@ -743,10 +1305,11 @@ function PromotionManagementView({ promotions }) {
     try {
       const response = await importBrandsCategory({
         file: uploadValidation.payload.file,
-        promoId,
       });
 
       setAssignmentUploadResponse(response);
+      setWorkbookUploadCompletedAt(new Date());
+      void refetchPromotionBrands();
 
       await Swal.fire({
         icon: response.summary?.failed > 0 ? "warning" : "success",
@@ -765,7 +1328,7 @@ function PromotionManagementView({ promotions }) {
   };
 
   return (
-    <AppLayout activeNav="promotions">
+    <AppLayout activeNav={isActivePromotionRoute ? "active-promotion" : "promotions"}>
       <div className="main-card promotions-card promotion-management-card">
         <div className="promotion-management-header">
           <div>
@@ -774,9 +1337,15 @@ function PromotionManagementView({ promotions }) {
             </Link>
             <p className="brands-admin-eyebrow">Promotion Management</p>
             <h2>{promotion.name}</h2>
-            <p>
-              {getPromotionCode(promotion)} | {formatDate(promotion.startDate)} - {formatDate(promotion.endDate)}
-            </p>
+            <div className="promotion-management-meta">
+              <span className="promotion-management-code">
+                <span>Promotion Code</span>
+                <strong>{promoId}</strong>
+              </span>
+              <span className="promotion-management-duration">
+                {formatDate(promotion.startDate)} - {formatDate(promotion.endDate)}
+              </span>
+            </div>
           </div>
           <span className={`promotion-status ${promotionState.className}`}>
             {promotionState.label}
@@ -788,149 +1357,288 @@ function PromotionManagementView({ promotions }) {
             <div>
               <h3>Promotion Assignments</h3>
               <p>
-                Upload QR image zips or promotion management workbooks for this
-                promotion. The promotion code is added to workbook uploads
-                automatically.
+                Manage the upload files that power promoter-brand QR assignments
+                for this active promotion.
               </p>
             </div>
-            <span className="promotion-code-pill">promoId {promoId}</span>
           </div>
 
-          <form className="promotion-upload-form" onSubmit={handlePreparedUpload}>
-            <div className="promotion-upload-warning">
-              <strong>QR image naming</strong>
-              <span>
-                Put every QR image in one zip file. Each image must be named
-                exactly like its QR code, so code 12345 should use 12345.png,
-                12345.jpg, or the matching image extension.
-              </span>
+          <div className="promotion-upload-note">
+            <strong>Independent uploads</strong>
+            <span>
+              QR image zips and promoter workbooks are separate actions. Upload
+              one file at a time, in any order, whenever that file is ready.
+            </span>
+          </div>
+
+          <details className="promotion-upload-how">
+            <summary>How this works</summary>
+            <div>
+              <p>
+                The workbook references QR codes that already exist on the
+                backend. If a workbook row uses QR code 12345, the matching QR
+                image should be named 12345.png, 12345.jpg, or the matching
+                image extension inside any uploaded QR zip.
+              </p>
+              <p>
+                Workbook columns must match the backend contract exactly:
+                <code>promotion_code</code>, <code>promoter_code</code>,{" "}
+                <code>brand</code>, and <code>qr code</code>.
+              </p>
             </div>
+          </details>
 
-            <label className="promotion-upload-dropzone" htmlFor="promotionQrZipUpload">
-              <input
-                id="promotionQrZipUpload"
-                ref={qrZipInputRef}
-                type="file"
-                accept={PROMOTION_QR_ZIP_ACCEPT}
-                onChange={handleQrZipFileChange}
-              />
-              <span>{qrZipFile ? qrZipFile.name : "Choose QR images zip file"}</span>
-              <small>ZIP only. Backend validates the images and filenames.</small>
-            </label>
-
-            {qrZipValidation.error ? (
-              <p className="promotion-upload-message promotion-upload-message--error" role="alert">
-                {qrZipValidation.error}
-              </p>
-            ) : null}
-
-            {isQrZipValid ? (
-              <div className="promotion-upload-ready">
-                <strong>QR zip is ready</strong>
-                <span>{qrZipValidation.payload.file.name}</span>
-                <code>{`promoId=${qrZipValidation.payload.promoId}`}</code>
-              </div>
-            ) : null}
-
-            {qrUploadResponse ? (
-              <p className="promotion-upload-message promotion-upload-message--success">
-                {qrUploadResponse.message || "QR codes uploaded successfully."}
-              </p>
-            ) : null}
-
-            <div className="promotion-upload-rules">
-              <div>
-                <span>Accepted file name</span>
-                <code>{PROMOTION_UPLOAD_FILE_BASENAME}.csv / .xls / .xlsx</code>
-              </div>
-            </div>
-
-            <label className="promotion-upload-dropzone" htmlFor="promotionManagementUpload">
-              <input
-                id="promotionManagementUpload"
-                ref={uploadInputRef}
-                type="file"
-                accept={PROMOTION_UPLOAD_ACCEPT}
-                onChange={handleUploadFileChange}
-              />
-              <span>{uploadFile ? uploadFile.name : "Choose Promotion Management file"}</span>
-              <small>CSV, XLS, or XLSX. Backend validates the workbook contents.</small>
-            </label>
-
-            {uploadValidation.error ? (
-              <p className="promotion-upload-message promotion-upload-message--error" role="alert">
-                {uploadValidation.error}
-              </p>
-            ) : null}
-
-            {isUploadValid ? (
-              <div className="promotion-upload-ready">
-                <strong>File is ready</strong>
-                <span>{uploadValidation.payload.file.name}</span>
-                <code>{`promoId=${uploadValidation.payload.promoId}`}</code>
-              </div>
-            ) : null}
-
-            {assignmentUploadResponse ? (
-              <div className="promotion-upload-ready">
-                <strong>Workbook import complete</strong>
-                <span>{assignmentUploadResponse.message}</span>
-                <code>
-                  {`total=${assignmentUploadResponse.summary?.total ?? 0}, imported=${assignmentUploadResponse.summary?.imported ?? 0}, updated=${assignmentUploadResponse.summary?.updated ?? 0}, failed=${assignmentUploadResponse.summary?.failed ?? 0}`}
-                </code>
-              </div>
-            ) : null}
-
-            <div className="brand-admin-form-actions promotion-upload-actions">
-              {qrZipFile ? (
-                <button
-                  type="button"
-                  className="brand-admin-secondary-btn"
-                  onClick={clearQrZipFile}
+          <div className="promotion-upload-card-grid">
+            <form className="promotion-upload-card" onSubmit={handlePreparedUpload}>
+              <div className="promotion-upload-card-header">
+                <div>
+                  <span className="promotion-upload-kicker">QR Images</span>
+                  <h4>Upload QR code images</h4>
+                </div>
+                <span
+                  className={`promotion-upload-status ${
+                    qrUploadResponse ? "is-complete" : ""
+                  }`.trim()}
                 >
-                  Clear QR Zip
-                </button>
+                  {getQrUploadStatus(qrUploadResponse, qrUploadCompletedAt)}
+                </span>
+              </div>
+
+              <p>
+                Upload a single zip containing QR images. Each file name should
+                match the QR code it represents.
+              </p>
+
+              <label
+                className={`promotion-upload-dropzone ${
+                  dragTarget === "qr" ? "is-dragging" : ""
+                }`.trim()}
+                htmlFor="promotionQrZipUpload"
+                tabIndex={0}
+                role="button"
+                onKeyDown={(event) => handleDropzoneKeyDown(event, qrZipInputRef)}
+                onDragOver={(event) => handleDropzoneDragOver(event, "qr")}
+                onDragLeave={(event) => handleDropzoneDragLeave(event, "qr")}
+                onDrop={handleQrZipDrop}
+              >
+                <input
+                  id="promotionQrZipUpload"
+                  ref={qrZipInputRef}
+                  type="file"
+                  accept={PROMOTION_QR_ZIP_ACCEPT}
+                  onChange={handleQrZipFileChange}
+                />
+                <span>{qrZipFile ? qrZipFile.name : "Drop QR zip here"}</span>
+                <small>or click to browse · .zip only</small>
+              </label>
+
+              <div className="promotion-upload-rules">
+                <div>
+                  <span>Required format</span>
+                  <code>qr_codes.zip</code>
+                </div>
+                <div>
+                  <span>Naming example</span>
+                  <code>12345.png</code>
+                </div>
+              </div>
+
+              {qrZipValidation.error ? (
+                <p className="promotion-upload-message promotion-upload-message--error" role="alert">
+                  {qrZipValidation.error}
+                </p>
               ) : null}
-              {uploadFile ? (
+
+              {isQrZipValid ? (
+                <div className="promotion-upload-ready">
+                  <strong>Ready to upload</strong>
+                  <span>{qrZipValidation.payload.file.name}</span>
+                </div>
+              ) : null}
+
+              {qrUploadResponse ? (
+                <p className="promotion-upload-message promotion-upload-message--success">
+                  {qrUploadResponse.message || "QR codes uploaded successfully."}
+                </p>
+              ) : null}
+
+              <div className="promotion-upload-actions">
+                {qrZipFile ? (
+                  <button
+                    type="button"
+                    className="brand-admin-secondary-btn"
+                    onClick={clearQrZipFile}
+                  >
+                    Clear QR Zip
+                  </button>
+                ) : null}
                 <button
-                  type="button"
-                  className="brand-admin-secondary-btn"
-                  onClick={clearUploadFile}
+                  type="submit"
+                  className="brand-admin-primary-btn"
+                  disabled={!isQrZipValid || isUploadingQrCodes}
                 >
-                  Clear
+                  {isUploadingQrCodes ? "Uploading QR Zip..." : "Upload QR Zip"}
                 </button>
+              </div>
+            </form>
+
+            <form
+              className="promotion-upload-card"
+              onSubmit={(event) => {
+                event.preventDefault();
+                void handleAssignmentUpload();
+              }}
+            >
+              <div className="promotion-upload-card-header">
+                <div>
+                  <span className="promotion-upload-kicker">Promoter Workbook</span>
+                  <h4>Upload assignment workbook</h4>
+                </div>
+                <span
+                  className={`promotion-upload-status ${
+                    assignmentUploadResponse ? "is-complete" : ""
+                  }`.trim()}
+                >
+                  {getWorkbookUploadStatus(
+                    assignmentUploadResponse,
+                    workbookUploadCompletedAt,
+                  )}
+                </span>
+              </div>
+
+              <p>
+                Upload one workbook where each row maps a promoter to a brand
+                and a QR code reference.
+              </p>
+
+              <label
+                className={`promotion-upload-dropzone ${
+                  dragTarget === "workbook" ? "is-dragging" : ""
+                }`.trim()}
+                htmlFor="promotionManagementUpload"
+                tabIndex={0}
+                role="button"
+                onKeyDown={(event) => handleDropzoneKeyDown(event, uploadInputRef)}
+                onDragOver={(event) => handleDropzoneDragOver(event, "workbook")}
+                onDragLeave={(event) => handleDropzoneDragLeave(event, "workbook")}
+                onDrop={handleWorkbookDrop}
+              >
+                <input
+                  id="promotionManagementUpload"
+                  ref={uploadInputRef}
+                  type="file"
+                  accept={PROMOTION_UPLOAD_ACCEPT}
+                  onChange={handleUploadFileChange}
+                />
+                <span>
+                  {uploadFile ? uploadFile.name : "Drop Promotion Management file here"}
+                </span>
+                <small>or click to browse · CSV, XLS, or XLSX</small>
+              </label>
+
+              <div className="promotion-upload-rules">
+                <div>
+                  <span>Accepted file name</span>
+                  <code>{PROMOTION_UPLOAD_FILE_BASENAME}.csv / .xls / .xlsx</code>
+                </div>
+                <div>
+                  <span>Template</span>
+                  <button
+                    type="button"
+                    className="promotion-template-download"
+                    onClick={() => downloadPromotionWorkbookTemplate(promoId)}
+                  >
+                    Download template
+                  </button>
+                </div>
+              </div>
+
+              {uploadValidation.error ? (
+                <p className="promotion-upload-message promotion-upload-message--error" role="alert">
+                  {uploadValidation.error}
+                </p>
               ) : null}
-              <button
-                type="submit"
-                className="brand-admin-primary-btn"
-                disabled={!isQrZipValid || isUploadingQrCodes}
-              >
-                {isUploadingQrCodes ? "Uploading QR Zip..." : "Upload QR Zip"}
-              </button>
-              <button
-                type="button"
-                className="brand-admin-primary-btn"
-                disabled={!isUploadValid || isUploadingAssignments}
-                onClick={handleAssignmentUpload}
-              >
-                {isUploadingAssignments ? "Uploading Workbook..." : "Upload Workbook"}
-              </button>
-            </div>
-          </form>
+
+              {isUploadValid ? (
+                <div className="promotion-upload-ready">
+                  <strong>Ready to upload</strong>
+                  <span>{uploadValidation.payload.file.name}</span>
+                </div>
+              ) : null}
+
+              {assignmentUploadResponse ? (
+                <div className="promotion-upload-ready">
+                  <strong>Workbook import complete</strong>
+                  <span>{assignmentUploadResponse.message}</span>
+                  <code>
+                    {`total=${assignmentUploadResponse.summary?.total ?? 0}, imported=${assignmentUploadResponse.summary?.imported ?? 0}, updated=${assignmentUploadResponse.summary?.updated ?? 0}, failed=${assignmentUploadResponse.summary?.failed ?? 0}`}
+                  </code>
+                </div>
+              ) : null}
+
+              <div className="promotion-upload-actions">
+                {uploadFile ? (
+                  <button
+                    type="button"
+                    className="brand-admin-secondary-btn"
+                    onClick={clearUploadFile}
+                  >
+                    Clear Workbook
+                  </button>
+                ) : null}
+                <button
+                  type="submit"
+                  className="brand-admin-primary-btn"
+                  disabled={!isUploadValid || isUploadingAssignments}
+                >
+                  {isUploadingAssignments ? "Uploading Workbook..." : "Upload Workbook"}
+                </button>
+              </div>
+            </form>
+          </div>
         </section>
+
+        <UploadedPromoterBrandsTable
+          isError={isPromotionBrandsError}
+          isLoading={isLoadingPromotionBrands}
+          promotion={promotion}
+          promotionBrands={promotionBrands}
+          promotionBrandsError={promotionBrandsError}
+          promoId={promoId}
+        />
       </div>
     </AppLayout>
   );
 }
 
-export default function PromotionsPage() {
+export default function PromotionsPage({ activePromotionOnly = false }) {
   const { promotionId } = useParams();
-  const { data: promotions = [] } = usePromotions();
+  const {
+    data: promotions = [],
+    isLoading: isPromotionsLoading,
+    isError: isPromotionsError,
+    error: promotionsError,
+  } = usePromotions();
+
+  if (activePromotionOnly) {
+    return (
+      <PromotionManagementView
+        promotions={promotions}
+        isPromotionsLoading={isPromotionsLoading}
+        isPromotionsError={isPromotionsError}
+        promotionsError={promotionsError}
+        isActivePromotionRoute
+      />
+    );
+  }
 
   if (promotionId) {
     return (
       <PromotionManagementView
         promotions={promotions}
+        isPromotionsLoading={isPromotionsLoading}
+        isPromotionsError={isPromotionsError}
+        promotionsError={promotionsError}
       />
     );
   }

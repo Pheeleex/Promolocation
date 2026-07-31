@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   createPromotion,
   deletePromotion,
+  getBrandsByPromotion,
   listPromotions,
   updatePromotion,
   uploadPromotionQrCodesBulk,
@@ -10,12 +11,22 @@ import {
 export const promotionKeys = {
   all: ["promotions"] as const,
   list: ["promotions", "list"] as const,
+  brands: (promotionCode: string) =>
+    ["promotions", "brands", promotionCode] as const,
 };
 
 export function usePromotions() {
   return useQuery({
     queryKey: promotionKeys.list,
     queryFn: () => listPromotions(),
+  });
+}
+
+export function usePromotionBrands(promotionCode: string, enabled = true) {
+  return useQuery({
+    queryKey: promotionKeys.brands(promotionCode),
+    queryFn: () => getBrandsByPromotion({ promotionCode }),
+    enabled: enabled && Boolean(promotionCode),
   });
 }
 

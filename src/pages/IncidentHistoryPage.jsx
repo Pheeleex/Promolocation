@@ -1,12 +1,11 @@
 import React from "react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import AppLayout from "../components/AppLayout";
 import Pagination from "../components/Pagination";
 import { useIncidents } from "../hooks/use-incidents";
+import { useTablePagination } from "../hooks/use-table-pagination";
 import { formatLongDate, getIncidentStatusColor } from "../utils/formatters";
-
-const PAGE_SIZE = 10;
 
 function SearchIcon() {
   return (
@@ -19,7 +18,6 @@ function SearchIcon() {
 
 export default function IncidentHistoryPage() {
   const [searchTerm, setSearchTerm] = useState("");
-  const [currentPage, setCurrentPage] = useState(0);
   const { data: incidents = [], isLoading, isError, error } = useIncidents();
   const navigate = useNavigate();
 
@@ -31,23 +29,12 @@ export default function IncidentHistoryPage() {
       .includes(normalizedSearchTerm),
   );
 
-  const totalPages = Math.max(1, Math.ceil(filteredIncidents.length / PAGE_SIZE));
-  const safeCurrentPage = Math.min(currentPage, totalPages - 1);
-  const paginatedIncidents = filteredIncidents.slice(
-    safeCurrentPage * PAGE_SIZE,
-    safeCurrentPage * PAGE_SIZE + PAGE_SIZE,
-  );
-
-  useEffect(() => {
-    setCurrentPage(0);
-  }, [searchTerm, incidents.length]);
-
-  useEffect(() => {
-    if (safeCurrentPage !== currentPage) {
-      setCurrentPage(safeCurrentPage);
-    }
-  }, [currentPage, safeCurrentPage]);
-
+  const {
+    currentPage,
+    paginatedItems: paginatedIncidents,
+    setCurrentPage,
+    totalPages,
+  } = useTablePagination(filteredIncidents, [searchTerm, incidents.length]);
 
   return (
     <AppLayout activeNav="incidents" mainContentClassName="promoters-main">
@@ -139,7 +126,7 @@ export default function IncidentHistoryPage() {
 
         <div className="card-footer">
           <Pagination
-            currentPage={safeCurrentPage}
+            currentPage={currentPage}
             totalPages={totalPages}
             onPageChange={setCurrentPage}
           />
