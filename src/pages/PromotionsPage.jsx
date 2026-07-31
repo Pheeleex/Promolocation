@@ -621,7 +621,7 @@ function PromotionsListView() {
 
   const sortedPromotions = useMemo(() => sortPromotions(promotions), [promotions]);
   const activePromotion = useMemo(
-    () => promotions.find((promotion) => promotion.isActive),
+    () => promotions.find(isCurrentlyActivePromotion),
     [promotions],
   );
 
