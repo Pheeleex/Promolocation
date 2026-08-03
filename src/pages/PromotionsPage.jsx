@@ -19,7 +19,10 @@ import {
   useUpdatePromotion,
   useUploadPromotionQrCodesBulk,
 } from "../hooks/use-promotions";
-import { useImportBrandsCategory } from "../hooks/use-promoters-brands";
+import {
+  useImportBrandsCategory,
+  useSystemBrands,
+} from "../hooks/use-promoters-brands";
 import { useTablePagination } from "../hooks/use-table-pagination";
 
 const EMPTY_PROMOTION_FORM = {
@@ -352,6 +355,264 @@ function validatePromotionUploadFileName(file) {
   }
 
   return "";
+}
+
+function parseCsvLine(line) {
+  const cells = [];
+  let currentCell = "";
+  let isQuoted = false;
+
+  for (let index = 0; index < line.length; index += 1) {
+    const character = line[index];
+    const nextCharacter = line[index + 1];
+
+    if (character === '"' && isQuoted && nextCharacter === '"') {
+      currentCell += '"';
+      index += 1;
+      continue;
+    }
+
+    if (character === '"') {
+      isQuoted = !isQuoted;
+      continue;
+    }
+
+    if (character === "," && !isQuoted) {
+      cells.push(currentCell.trim());
+      currentCell = "";
+      continue;
+    }
+
+    currentCell += character;
+  }
+
+  cells.push(currentCell.trim());
+  return cells;
+}
+
+function normalizeWorkbookHeader(value) {
+  return String(value || "").trim().toLowerCase();
+}
+
+function normalizeBrandName(value) {
+  return String(value || "").trim().toLowerCase();
+}
+
+function validateWorkbookRows(rows, promoId, systemBrands = []) {
+  const expectedHeaders = ["promotion_code", "promoter_code", "brand", "qr code"];
+  const headers = rows[0]?.map(normalizeWorkbookHeader) || [];
+  const brandNames = new Set(systemBrands.map((brand) => normalizeBrandName(brand.name)));
+  const hasExactHeaders =
+    headers.length === expectedHeaders.length &&
+    expectedHeaders.every((expectedHeader, index) => headers[index] === expectedHeader);
+
+  if (!hasExactHeaders) {
+    return `Workbook headers must be exactly: ${expectedHeaders.join(", ")}.`;
+  }
+
+  const dataRows = rows
+    .slice(1)
+    .map((row, index) => ({ rowNumber: index + 2, values: row }))
+    .filter(({ values }) => values.some((value) => String(value || "").trim()));
+
+  if (!dataRows.length) {
+    return "Add at least one promoter-brand row before uploading the workbook.";
+  }
+
+  for (const { rowNumber, values } of dataRows) {
+    const promotionCode = String(values[0] || "").trim();
+    const promoterCode = String(values[1] || "").trim();
+    const brand = String(values[2] || "").trim();
+    const qrCode = String(values[3] || "").trim();
+
+    if (promotionCode !== String(promoId)) {
+      return `Row ${rowNumber} must use promotion_code ${promoId}.`;
+    }
+
+    if (!promoterCode || !brand || !qrCode) {
+      return `Row ${rowNumber} must include promoter_code, brand, and qr code.`;
+    }
+
+    if (!brandNames.has(normalizeBrandName(brand))) {
+      return `Row ${rowNumber} uses "${brand}", but that brand does not exist.`;
+    }
+  }
+
+  return "";
+}
+
+async function inflateRawZipEntry(bytes) {
+  if (typeof DecompressionStream === "undefined") {
+    throw new Error("This browser cannot inspect compressed XLSX files.");
+  }
+
+  const stream = new Blob([bytes]).stream().pipeThrough(
+    new DecompressionStream("deflate-raw"),
+  );
+  const buffer = await new Response(stream).arrayBuffer();
+
+  return new Uint8Array(buffer);
+}
+
+function findEndOfCentralDirectory(view) {
+  for (let offset = view.byteLength - 22; offset >= 0; offset -= 1) {
+    if (view.getUint32(offset, true) === 0x06054b50) {
+      return offset;
+    }
+  }
+
+  return -1;
+}
+
+async function readZipTextEntries(file) {
+  const buffer = await file.arrayBuffer();
+  const view = new DataView(buffer);
+  const bytes = new Uint8Array(buffer);
+  const decoder = new TextDecoder();
+  const endOffset = findEndOfCentralDirectory(view);
+
+  if (endOffset < 0) {
+    throw new Error("The XLSX file could not be inspected.");
+  }
+
+  const entryCount = view.getUint16(endOffset + 10, true);
+  let directoryOffset = view.getUint32(endOffset + 16, true);
+  const entries = {};
+
+  for (let entryIndex = 0; entryIndex < entryCount; entryIndex += 1) {
+    if (view.getUint32(directoryOffset, true) !== 0x02014b50) {
+      throw new Error("The XLSX directory is invalid.");
+    }
+
+    const compressionMethod = view.getUint16(directoryOffset + 10, true);
+    const compressedSize = view.getUint32(directoryOffset + 20, true);
+    const fileNameLength = view.getUint16(directoryOffset + 28, true);
+    const extraLength = view.getUint16(directoryOffset + 30, true);
+    const commentLength = view.getUint16(directoryOffset + 32, true);
+    const localHeaderOffset = view.getUint32(directoryOffset + 42, true);
+    const fileName = decoder.decode(
+      bytes.slice(directoryOffset + 46, directoryOffset + 46 + fileNameLength),
+    );
+    const localFileNameLength = view.getUint16(localHeaderOffset + 26, true);
+    const localExtraLength = view.getUint16(localHeaderOffset + 28, true);
+    const dataOffset = localHeaderOffset + 30 + localFileNameLength + localExtraLength;
+    const compressedBytes = bytes.slice(dataOffset, dataOffset + compressedSize);
+    let entryBytes;
+
+    if (compressionMethod === 0) {
+      entryBytes = compressedBytes;
+    } else if (compressionMethod === 8) {
+      entryBytes = await inflateRawZipEntry(compressedBytes);
+    } else {
+      throw new Error("The XLSX file uses an unsupported compression format.");
+    }
+
+    entries[fileName] = decoder.decode(entryBytes);
+    directoryOffset += 46 + fileNameLength + extraLength + commentLength;
+  }
+
+  return entries;
+}
+
+function getXmlTextContent(xmlDocument, selector) {
+  return xmlDocument.querySelector(selector)?.textContent || "";
+}
+
+function parseXlsxRowsFromXml(sheetXml, sharedStringsXml = "") {
+  const parser = new DOMParser();
+  const sheetDocument = parser.parseFromString(sheetXml, "application/xml");
+  const sharedStrings = sharedStringsXml
+    ? Array.from(
+        parser
+          .parseFromString(sharedStringsXml, "application/xml")
+          .querySelectorAll("si"),
+      ).map((item) =>
+        Array.from(item.querySelectorAll("t"))
+          .map((textNode) => textNode.textContent || "")
+          .join(""),
+      )
+    : [];
+
+  return Array.from(sheetDocument.querySelectorAll("sheetData row")).map((row) =>
+    Array.from(row.querySelectorAll("c")).map((cell) => {
+      const type = cell.getAttribute("t");
+
+      if (type === "s") {
+        return sharedStrings[Number(getXmlTextContent(cell, "v"))] || "";
+      }
+
+      if (type === "inlineStr") {
+        return getXmlTextContent(cell, "is t");
+      }
+
+      return getXmlTextContent(cell, "v");
+    }),
+  );
+}
+
+async function parsePromotionWorkbookRows(file) {
+  const extension = getFileExtension(file.name);
+
+  if (extension === "csv") {
+    const text = await file.text();
+    return text
+      .split(/\r?\n/)
+      .filter((line) => line.trim())
+      .map(parseCsvLine);
+  }
+
+  if (extension === "xlsx") {
+    const entries = await readZipTextEntries(file);
+    const sheetXml = entries["xl/worksheets/sheet1.xml"];
+
+    if (!sheetXml) {
+      throw new Error("The XLSX file must include a first worksheet.");
+    }
+
+    return parseXlsxRowsFromXml(sheetXml, entries["xl/sharedStrings.xml"]);
+  }
+
+  if (extension === "xls") {
+    const text = await file.text();
+
+    if (!text.includes("promotion_code")) {
+      throw new Error("Use CSV or XLSX for workbook inspection before upload.");
+    }
+
+    const document = new DOMParser().parseFromString(text, "application/xml");
+    return Array.from(document.querySelectorAll("Row")).map((row) =>
+      Array.from(row.querySelectorAll("Cell Data")).map(
+        (cell) => cell.textContent || "",
+      ),
+    );
+  }
+
+  throw new Error("Upload a CSV, XLS, or XLSX workbook.");
+}
+
+async function validatePromotionWorkbookFile(file, promoId, systemBrands) {
+  const fileNameError = validatePromotionUploadFileName(file);
+
+  if (fileNameError) {
+    return fileNameError;
+  }
+
+  const extension = getFileExtension(file.name);
+
+  if (!["csv", "xls", "xlsx"].includes(extension)) {
+    return "Upload a CSV, XLS, or XLSX workbook.";
+  }
+
+  if (!systemBrands.length) {
+    return "Unable to validate brands because no system brands were loaded.";
+  }
+
+  try {
+    const rows = await parsePromotionWorkbookRows(file);
+    return validateWorkbookRows(rows, promoId, systemBrands);
+  } catch (error) {
+    return error?.message || "Unable to inspect the workbook.";
+  }
 }
 
 function validatePromotionQrZipFile(file) {
@@ -1056,6 +1317,11 @@ function PromotionManagementView({
     mutateAsync: importBrandsCategory,
     isPending: isUploadingAssignments,
   } = useImportBrandsCategory();
+  const {
+    data: systemBrands = [],
+    isLoading: isLoadingSystemBrands,
+    isError: isSystemBrandsError,
+  } = useSystemBrands();
   const promoId = getPromotionCode(promotion);
   const {
     data: promotionBrands = [],
@@ -1181,24 +1447,61 @@ function PromotionManagementView({
     }
   };
 
-  const prepareUploadFile = (selectedFile) => {
-    const validationError = validatePromotionUploadFileName(selectedFile);
+  const prepareUploadFile = async (selectedFile) => {
+    if (!selectedFile) {
+      setUploadFile(null);
+      setUploadValidation({
+        error: "Choose the Promotion Management file.",
+        payload: null,
+        status: "invalid",
+      });
+      return;
+    }
 
     setUploadFile(selectedFile);
     setUploadValidation({
+      error: "",
+      payload: null,
+      status: "validating",
+    });
+
+    if (isLoadingSystemBrands) {
+      setUploadValidation({
+        error: "Brands are still loading. Try again in a moment.",
+        payload: null,
+        status: "invalid",
+      });
+      return;
+    }
+
+    if (isSystemBrandsError) {
+      setUploadValidation({
+        error: "Unable to validate brands right now. Refresh and try again.",
+        payload: null,
+        status: "invalid",
+      });
+      return;
+    }
+
+    const validationError = await validatePromotionWorkbookFile(
+      selectedFile,
+      promoId,
+      systemBrands,
+    );
+
+    setUploadValidation({
       error: validationError,
-      payload:
-        selectedFile && !validationError
-          ? {
-              file: selectedFile,
-            }
-          : null,
-      status: selectedFile && !validationError ? "valid" : "invalid",
+      payload: !validationError
+        ? {
+            file: selectedFile,
+          }
+        : null,
+      status: !validationError ? "valid" : "invalid",
     });
   };
 
   const handleUploadFileChange = (event) => {
-    prepareUploadFile(event.target.files?.[0] || null);
+    void prepareUploadFile(event.target.files?.[0] || null);
   };
 
   const clearUploadFile = () => {
@@ -1249,7 +1552,7 @@ function PromotionManagementView({
     event.preventDefault();
     setDragTarget(null);
     const selectedFile = event.dataTransfer.files?.[0] || null;
-    prepareUploadFile(selectedFile);
+    void prepareUploadFile(selectedFile);
   };
 
   const handlePreparedUpload = async (event) => {
@@ -1560,6 +1863,12 @@ function PromotionManagementView({
               {uploadValidation.error ? (
                 <p className="promotion-upload-message promotion-upload-message--error" role="alert">
                   {uploadValidation.error}
+                </p>
+              ) : null}
+
+              {uploadValidation.status === "validating" ? (
+                <p className="promotion-upload-message">
+                  Inspecting workbook headers and promotion codes...
                 </p>
               ) : null}
 
