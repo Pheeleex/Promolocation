@@ -3808,13 +3808,14 @@
 }
 
 .assignment-action-panel {
-  grid-template-columns: minmax(0, 1fr) minmax(380px, 0.95fr);
+  grid-template-columns: minmax(0, 1fr);
   gap: 36px;
 }
 
 .assignment-action-main {
   gap: 22px;
-  padding-right: 36px;
+  border-right: 0;
+  padding-right: 0;
 }
 
 .assignment-action-heading {

@@ -96,27 +96,3 @@ export function CopyIcon() {
     </svg>
   );
 }
-
-export function AssignmentStatusPill({ label, tone = "success" }) {
-  return (
-    <span className={`assignment-status-pill assignment-status-pill--${tone}`}>
-      <AssignmentIcon type={tone === "danger" ? "info" : "check"} />
-      {label}
-    </span>
-  );
-}
-
-export function AssignmentMetricCard({ label, tone = "blue", value }) {
-  const iconType =
-    tone === "danger" ? "info" : tone === "purple" ? "calendar" : "check";
-
-  return (
-    <div className={`assignment-metric-card assignment-metric-card--${tone}`}>
-      <span>
-        <AssignmentIcon type={iconType} />
-      </span>
-      <strong>{value}</strong>
-      <small>{label}</small>
-    </div>
-  );
-}

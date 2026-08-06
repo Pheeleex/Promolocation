@@ -367,7 +367,6 @@ export default function QrCodesPage() {
           isLoading={isLoading}
           items={visibleQrCodes}
           loadingMessage="Loading QR codes..."
-          pageSize={20}
           tableClassName="data-table qr-repository-table"
         />
       </div>

@@ -7,8 +7,6 @@ import AppLayout from "../components/AppLayout";
 import DataTable from "../components/DataTable";
 import {
   AssignmentIcon,
-  AssignmentMetricCard,
-  AssignmentStatusPill,
   CopyIcon,
 } from "../components/promotion-assignment/AssignmentWidgets";
 import {
@@ -974,18 +972,6 @@ async function validatePromotionQrZipFile(file) {
   }
 }
 
-function formatUploadDate(value) {
-  if (!value) {
-    return "";
-  }
-
-  return new Intl.DateTimeFormat(undefined, {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  }).format(value);
-}
-
 function formatFileSize(bytes) {
   if (!Number.isFinite(bytes)) {
     return "";
@@ -1077,48 +1063,6 @@ function mapBackendWorkbookErrors(error) {
 
     return context ? `${row}: ${context} - ${message}` : `${row}: ${message}`;
   });
-}
-
-function getQrUploadStatus(response, uploadedAt) {
-  if (!response) {
-    return "Not uploaded yet";
-  }
-
-  const uploadedCount = response.summary?.uploaded ?? 0;
-  const parts = [`${uploadedCount} code${uploadedCount === 1 ? "" : "s"} uploaded`];
-
-  if (uploadedAt) {
-    parts.push(formatUploadDate(uploadedAt));
-  }
-
-  return parts.join(" · ");
-}
-
-function getWorkbookUploadStatus(response, uploadedAt) {
-  if (!response) {
-    return "Not uploaded yet";
-  }
-
-  const summary = response.summary || {};
-  const processedCount = summary.total ?? 0;
-  const importedCount = summary.imported ?? 0;
-  const updatedCount = summary.updated ?? 0;
-  const failedCount = summary.failed ?? 0;
-  const parts = [
-    `${processedCount} row${processedCount === 1 ? "" : "s"} processed`,
-    `${importedCount} imported`,
-    `${updatedCount} updated`,
-  ];
-
-  if (failedCount > 0) {
-    parts.push(`${failedCount} failed`);
-  }
-
-  if (uploadedAt) {
-    parts.push(formatUploadDate(uploadedAt));
-  }
-
-  return parts.join(" · ");
 }
 
 function PromotionFormModal({
@@ -1735,10 +1679,6 @@ function PromotionManagementView({
     payload: null,
     status: "idle",
   });
-  const [qrUploadResponse, setQrUploadResponse] = useState(null);
-  const [assignmentUploadResponse, setAssignmentUploadResponse] = useState(null);
-  const [qrUploadCompletedAt, setQrUploadCompletedAt] = useState(null);
-  const [workbookUploadCompletedAt, setWorkbookUploadCompletedAt] = useState(null);
   const [dragTarget, setDragTarget] = useState(null);
   const [activeAssignmentAction, setActiveAssignmentAction] = useState("qr");
   const [singleAssignmentForm, setSingleAssignmentForm] = useState({
@@ -1924,9 +1864,6 @@ function PromotionManagementView({
       payload: null,
       status: "idle",
     });
-    setQrUploadResponse(null);
-    setQrUploadCompletedAt(null);
-
     if (qrZipInputRef.current) {
       qrZipInputRef.current.value = "";
     }
@@ -2015,9 +1952,6 @@ function PromotionManagementView({
       payload: null,
       status: "idle",
     });
-    setAssignmentUploadResponse(null);
-    setWorkbookUploadCompletedAt(null);
-
     if (uploadInputRef.current) {
       uploadInputRef.current.value = "";
     }
@@ -2078,13 +2012,10 @@ function PromotionManagementView({
     }
 
     try {
-      const response = await uploadQrCodesBulk({
+      await uploadQrCodesBulk({
         file: qrZipValidation.payload.file,
         promotionCode: promoId,
       });
-
-      setQrUploadResponse(response);
-      setQrUploadCompletedAt(new Date());
 
       await Swal.fire({
         icon: "success",
@@ -2092,6 +2023,7 @@ function PromotionManagementView({
         text: "QR codes uploaded successfully.",
         confirmButtonColor: "#22c55e",
       });
+      clearQrZipFile();
     } catch (uploadError) {
       await Swal.fire({
         icon: "error",
@@ -2123,8 +2055,6 @@ function PromotionManagementView({
         file: uploadValidation.payload.file,
       });
 
-      setAssignmentUploadResponse(response);
-      setWorkbookUploadCompletedAt(new Date());
       void refetchPromotionBrands();
 
       await Swal.fire({
@@ -2133,6 +2063,7 @@ function PromotionManagementView({
         text: response.message || `Workbook uploaded for promotion ${promoId}.`,
         confirmButtonColor: response.summary?.failed > 0 ? "#f59e0b" : "#22c55e",
       });
+      clearUploadFile();
     } catch (uploadError) {
       const backendWorkbookErrors = mapBackendWorkbookErrors(uploadError);
 
@@ -2279,9 +2210,6 @@ function PromotionManagementView({
 
   const qrValidationSummary = getQrValidationSummary(qrZipValidation.error);
   const workbookValidationSummary = getWorkbookValidationSummary(uploadValidation.error);
-  const qrUploadSummary = qrUploadResponse?.summary || {};
-  const workbookSummary = assignmentUploadResponse?.summary || {};
-
   return (
     <AppLayout activeNav={isActivePromotionRoute ? "active-promotion" : "promotions"}>
       <div className="main-card promotions-card promotion-management-card">
@@ -2481,39 +2409,6 @@ function PromotionManagementView({
                   </div>
                 </div>
 
-                <aside className="assignment-summary-panel">
-                  {qrUploadResponse ? (
-                    <>
-                      <div className="assignment-summary-header">
-                        <strong>Upload summary</strong>
-                        <AssignmentStatusPill label="Upload complete" />
-                      </div>
-                      <div className="assignment-metric-grid">
-                        <AssignmentMetricCard
-                          label="detected"
-                          value={qrUploadSummary.total ?? qrZipValidation.payload?.qrCodes.length ?? 0}
-                        />
-                        <AssignmentMetricCard
-                          label="uploaded"
-                          tone="success"
-                          value={qrUploadSummary.uploaded ?? 0}
-                        />
-                        <AssignmentMetricCard
-                          label="last updated"
-                          tone="purple"
-                          value={formatUploadDate(qrUploadCompletedAt) || "--"}
-                        />
-                      </div>
-                      <div className="assignment-summary-actions">
-                        <Link to="/qr-codes" className="brand-admin-secondary-link">
-                          View QR codes
-                        </Link>
-                      </div>
-                    </>
-                  ) : (
-                    <p>No QR ZIP uploaded in this session.</p>
-                  )}
-                </aside>
               </form>
             ) : null}
 
@@ -2629,46 +2524,6 @@ function PromotionManagementView({
                   </div>
                 </div>
 
-                <aside className="assignment-summary-panel">
-                  {assignmentUploadResponse ? (
-                    <>
-                      <div className="assignment-summary-header">
-                        <strong>Import summary</strong>
-                        <AssignmentStatusPill
-                          label={
-                            workbookSummary.failed > 0
-                              ? "Import complete"
-                              : "Import complete"
-                          }
-                          tone={workbookSummary.failed > 0 ? "warning" : "success"}
-                        />
-                      </div>
-                      <div className="assignment-metric-grid">
-                        <AssignmentMetricCard
-                          label="processed"
-                          value={workbookSummary.total ?? 0}
-                        />
-                        <AssignmentMetricCard
-                          label="added"
-                          tone="success"
-                          value={workbookSummary.imported ?? 0}
-                        />
-                        <AssignmentMetricCard
-                          label="updated"
-                          tone="purple"
-                          value={workbookSummary.updated ?? 0}
-                        />
-                        <AssignmentMetricCard
-                          label="failed"
-                          tone="danger"
-                          value={workbookSummary.failed ?? 0}
-                        />
-                      </div>
-                    </>
-                  ) : (
-                    <p>No workbook imported in this session.</p>
-                  )}
-                </aside>
               </form>
             ) : null}
 
