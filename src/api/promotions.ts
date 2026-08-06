@@ -3,11 +3,15 @@ import type {
   DeletePromotionPayload,
   GetPromotionBrandsPayload,
   GetPromotionBrandsResponse,
+  ListQrCodesPayload,
+  ListQrCodesResponse,
   ListPromotionsPayload,
   ListPromotionsResponse,
   ManagePromotionResponse,
   Promotion,
   PromotionAssignment,
+  QrCodeRecord,
+  RawQrCodeRecord,
   PromotionStatus,
   RawPromotionBrand,
   RawPromotion,
@@ -24,6 +28,7 @@ import { assertApiSuccess } from "./response";
 const MANAGE_PROMOTIONS_PATH = "/manage_promotions";
 const UPLOAD_QR_CODES_BULK_PATH = "/upload_qr_codes_bulk";
 const GET_BRANDS_BY_PROMOTION_PATH = "/get_brands_by_promotion";
+const GET_QR_CODES_PATH = "/get_qr_codes";
 
 function normalizeIsActive(isActive: RawPromotion["is_active"], status?: string | null) {
   if (isActive === true || isActive === 1 || isActive === "1") {
@@ -51,6 +56,10 @@ function normalizePromotionStatus(status?: string | null): PromotionStatus {
 }
 
 function normalizePromotionActive(isActive: RawPromotionBrand["promotion_active"]) {
+  return isActive === true || isActive === 1 || isActive === "1";
+}
+
+function normalizeBooleanFlag(isActive: unknown) {
   return isActive === true || isActive === 1 || isActive === "1";
 }
 
@@ -121,6 +130,72 @@ function mapPromotionBrand(brand: RawPromotionBrand): PromotionAssignment {
     promotionName: brand.promotion_name || null,
     promotionActive: normalizePromotionActive(brand.promotion_active),
     createdAt: brand.created_at || "",
+  };
+}
+
+function firstTextValue(...values: Array<string | number | null | undefined>) {
+  const value = values.find((currentValue) => {
+    if (currentValue === null || currentValue === undefined) {
+      return false;
+    }
+
+    return String(currentValue).trim() !== "";
+  });
+
+  return value === null || value === undefined ? "" : String(value);
+}
+
+function getQrFileName(record: RawQrCodeRecord) {
+  const explicitName = firstTextValue(record.filename, record.file_name);
+
+  if (explicitName) {
+    return explicitName;
+  }
+
+  const url = firstTextValue(
+    record.promo_URL,
+    record.promo_url,
+    record.qr_url,
+    record.qr_image,
+    record.file_url,
+  );
+
+  if (!url) {
+    return "";
+  }
+
+  return url.split("?")[0].split("/").pop() || url;
+}
+
+function mapQrCodeRecord(record: RawQrCodeRecord, index: number): QrCodeRecord {
+  const fileName = getQrFileName(record);
+  const code = firstTextValue(record.qr_code, record.qrCode, record.code) ||
+    fileName.split(".").slice(0, -1).join(".") ||
+    fileName;
+
+  return {
+    id: record.id ?? `${code || "qr"}-${index}`,
+    code,
+    fileName,
+    imageUrl: firstTextValue(
+      record.promo_URL,
+      record.promo_url,
+      record.qr_url,
+      record.qr_image,
+      record.file_url,
+    ) || null,
+    promoterId: firstTextValue(record.promoter_id, record.promoter_code),
+    promoterName: firstTextValue(record.promoter_name),
+    promoterEmail: firstTextValue(record.promoter_email),
+    promoterPhone: firstTextValue(record.promoter_phone),
+    promotionCode: firstTextValue(record.promotion_code),
+    promotionName: firstTextValue(record.promotion_name),
+    promotionStatus: firstTextValue(record.promotion_status),
+    promotionActive: normalizeBooleanFlag(record.promotion_active),
+    promoType: firstTextValue(record.promo_type),
+    brandName: firstTextValue(record.brand, record.brand_name),
+    createdAt: record.created_at || null,
+    updatedAt: record.updated_at || null,
   };
 }
 
@@ -255,4 +330,49 @@ export async function getBrandsByPromotion(
   );
 
   return (response.brands || []).map(mapPromotionBrand);
+}
+
+export async function listQrCodes(
+  payload: ListQrCodesPayload = {},
+): Promise<QrCodeRecord[]> {
+  const requestBody: Record<string, unknown> = {};
+  const promoterId = payload.promoterId?.trim();
+  const promotionCode = payload.promotionCode?.trim();
+  const brand = payload.brand?.trim();
+
+  if (promoterId) {
+    requestBody.promoter_id = promoterId;
+  }
+
+  if (promotionCode) {
+    requestBody.promotion_code = promotionCode;
+  }
+
+  if (brand) {
+    requestBody.brand = brand;
+  }
+
+  if (payload.page !== undefined) {
+    requestBody.page = payload.page;
+  }
+
+  if (payload.perPage !== undefined) {
+    requestBody.per_page = payload.perPage;
+  }
+
+  const response = assertApiSuccess(
+    await authenticatedAdminPost<ListQrCodesResponse>(
+      GET_QR_CODES_PATH,
+      requestBody,
+    ),
+  );
+
+  const records =
+    response.qr_codes ||
+    response.qrCodes ||
+    response.data ||
+    response.results ||
+    [];
+
+  return records.map(mapQrCodeRecord);
 }

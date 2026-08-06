@@ -1,6 +1,15 @@
-const MAX_IMAGE_FILE_SIZE_BYTES = 5 * 1024 * 1024;
+export const MAX_UPLOAD_FILE_SIZE_BYTES = 3 * 1024 * 1024;
+export const MAX_UPLOAD_FILE_SIZE_LABEL = "3MB";
 const IMAGE_FILE_EXTENSION_PATTERN =
   /\.(avif|bmp|gif|heic|heif|ico|jpe?g|png|svg|tiff?|webp)$/i;
+
+export function validateFileSize(file, fileLabel = "File") {
+  if (!file || file.size <= MAX_UPLOAD_FILE_SIZE_BYTES) {
+    return null;
+  }
+
+  return `${fileLabel} must be ${MAX_UPLOAD_FILE_SIZE_LABEL} or smaller.`;
+}
 
 function buildExtensionPattern(extensions) {
   const normalizedExtensions = extensions
@@ -36,20 +45,28 @@ export function validateImageUpload(file, options = {}) {
     Array.isArray(allowedMimeTypes) && allowedMimeTypes.length > 0
       ? allowedMimeTypes.some((mimeType) => mimeType.toLowerCase() === normalizedMimeType)
       : hasImageMimeType;
+  const hasExplicitNonImageMimeType =
+    Boolean(normalizedMimeType) && !hasImageMimeType;
 
   if (Array.isArray(allowedMimeTypes) && allowedMimeTypes.length > 0) {
-    if (!hasAllowedMimeType && !hasAllowedExtension) {
+    if (hasExplicitNonImageMimeType || (!hasAllowedMimeType && !hasAllowedExtension)) {
       const extensionList = allowedExtensions?.join(", ");
       return extensionList
         ? `Only ${extensionList} files are allowed for ${fileLabel.toLowerCase()}.`
         : `Only supported image files are allowed for ${fileLabel.toLowerCase()}.`;
     }
-  } else if (!hasImageMimeType && !defaultHasImageExtension) {
+  } else if (hasExplicitNonImageMimeType || (!hasImageMimeType && !defaultHasImageExtension)) {
     return "Only image files are allowed.";
   }
 
-  if (file.size > MAX_IMAGE_FILE_SIZE_BYTES) {
-    return `${fileLabel} must be 5MB or smaller.`;
+  if (Array.isArray(allowedExtensions) && allowedExtensions.length > 0 && !hasAllowedExtension) {
+    return `Only ${allowedExtensions.join(", ")} files are allowed for ${fileLabel.toLowerCase()}.`;
+  }
+
+  const fileSizeError = validateFileSize(file, fileLabel);
+
+  if (fileSizeError) {
+    return fileSizeError;
   }
 
   return null;

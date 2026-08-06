@@ -138,6 +138,29 @@ function FieldShell({
   );
 }
 
+export function FormErrorSummary({ errors, title = "Please fix the following:" }) {
+  const errorList = Array.isArray(errors)
+    ? errors.filter(Boolean)
+    : errors
+      ? [errors]
+      : [];
+
+  if (!errorList.length) {
+    return null;
+  }
+
+  return (
+    <div className="form-error-summary" role="alert" aria-live="polite">
+      <strong>{title}</strong>
+      <ul>
+        {errorList.map((error, index) => (
+          <li key={`${error}-${index}`}>{error}</li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 export const TextInput = forwardRef(function TextInput(
   { className = "", error, hint, id, label, required, ...inputProps },
   ref,

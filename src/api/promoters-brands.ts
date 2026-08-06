@@ -36,6 +36,8 @@ function mapPromoterBrand(brand: any): PromoterBrand {
     userId: brand.user_id,
     promoterId: brand.promoter_id,
     name: brand.brand,
+    promotionCode: brand.promotion_code ?? null,
+    promoType: brand.promo_type ?? null,
     promoUrl: brand.promo_URL || null,
     createdAt: brand.created_at || null,
     updatedAt: brand.updated_at || null,
@@ -216,6 +218,8 @@ export async function createPromoterBrand(
         {
           promoter_id: payload.promoterId,
           brand: brandName,
+          promotion_code: payload.promotionCode || undefined,
+          promo_type: payload.promoType || undefined,
         },
       ),
     );
@@ -230,6 +234,12 @@ export async function createPromoterBrand(
   const formData = new FormData();
   formData.set("promoter_id", payload.promoterId);
   formData.set("brand", brandName);
+  if (payload.promotionCode) {
+    formData.set("promotion_code", payload.promotionCode);
+  }
+  if (payload.promoType) {
+    formData.set("promo_type", payload.promoType);
+  }
   formData.set("promo_URL", payload.promoFile);
 
   const response = assertApiSuccess(

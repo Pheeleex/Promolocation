@@ -2,6 +2,7 @@ import React from "react";
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
+import { FormErrorSummary } from "../components/FormControls";
 import { useAuth } from "../context/AuthContext";
 import { useForgotPassword } from "../hooks/use-admin-auth";
 import { useForgotPasswordCooldown } from "../hooks/use-forgot-password-cooldown";
@@ -11,7 +12,7 @@ import { assetPath } from "../utils/assetPath";
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
-  const [emailError, setEmailError] = useState("");
+  const [formErrors, setFormErrors] = useState([]);
   const [submittedEmail, setSubmittedEmail] = useState("");
   const { authUser } = useAuth();
   const { mutateAsync: sendForgotPassword, isPending } = useForgotPassword();
@@ -41,7 +42,7 @@ export default function ForgotPasswordPage() {
     const normalizedEmail = email.trim().toLowerCase();
 
     if (!normalizedEmail) {
-      setEmailError("Email is required.");
+      setFormErrors(["Email is required."]);
       return;
     }
 
@@ -75,7 +76,7 @@ export default function ForgotPasswordPage() {
       registerAttempt();
       setSubmittedEmail(normalizedEmail);
       setEmail(normalizedEmail);
-      setEmailError("");
+      setFormErrors([]);
     } catch (error) {
       Swal.fire({
         icon: "error",
@@ -130,7 +131,7 @@ export default function ForgotPasswordPage() {
           </div>
         ) : null}
 
-        <form className="login-form" onSubmit={handleSubmit}>
+        <form className="login-form" onSubmit={handleSubmit} noValidate>
           <div className="input-group">
             <label htmlFor="forgot-email">
               Email Address <span className="required-mark">*</span>
@@ -142,25 +143,19 @@ export default function ForgotPasswordPage() {
               value={email}
               disabled={isPending}
               autoComplete="email"
-              aria-invalid={Boolean(emailError)}
-              aria-describedby={emailError ? "forgot-email-error" : undefined}
-              className={emailError ? "input-error" : ""}
+              aria-invalid={Boolean(formErrors.length)}
               onChange={(event) => {
                 setEmail(event.target.value);
-                setEmailError("");
+                setFormErrors([]);
                 setSubmittedEmail("");
               }}
             />
-            {emailError ? (
-              <p id="forgot-email-error" className="field-error" role="alert">
-                {emailError}
-              </p>
-            ) : (
-              <p className="field-helper">
-                Use the same email address you sign in with on this dashboard.
-              </p>
-            )}
+            <p className="field-helper">
+              Use the same email address you sign in with on this dashboard.
+            </p>
           </div>
+
+          <FormErrorSummary errors={formErrors} />
 
           <button
             type="submit"

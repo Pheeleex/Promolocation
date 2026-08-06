@@ -3,6 +3,7 @@ import {
   createPromotion,
   deletePromotion,
   getBrandsByPromotion,
+  listQrCodes,
   listPromotions,
   updatePromotion,
   uploadPromotionQrCodesBulk,
@@ -13,6 +14,11 @@ export const promotionKeys = {
   list: ["promotions", "list"] as const,
   brands: (promotionCode: string) =>
     ["promotions", "brands", promotionCode] as const,
+  qrCodes: (filters: {
+    promoterId?: string;
+    promotionCode?: string;
+    brand?: string;
+  }) => ["promotions", "qr-codes", filters] as const,
 };
 
 export function usePromotions() {
@@ -27,6 +33,13 @@ export function usePromotionBrands(promotionCode: string, enabled = true) {
     queryKey: promotionKeys.brands(promotionCode),
     queryFn: () => getBrandsByPromotion({ promotionCode }),
     enabled: enabled && Boolean(promotionCode),
+  });
+}
+
+export function useQrCodes(filters = {}) {
+  return useQuery({
+    queryKey: promotionKeys.qrCodes(filters),
+    queryFn: () => listQrCodes(filters),
   });
 }
 

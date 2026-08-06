@@ -2,8 +2,9 @@ import React from "react";
 import { useEffect, useMemo, useState } from "react";
 import Swal from "sweetalert2";
 import AppLayout from "../components/AppLayout";
+import DataTable from "../components/DataTable";
 import Modal from "../components/Modal";
-import Pagination from "../components/Pagination";
+import SearchBar from "../components/SearchBar";
 import {
   usePromoters,
   useResetPromoterPassword,
@@ -12,7 +13,6 @@ import {
 import {
   usePromoterBrands,
 } from "../hooks/use-promoters-brands";
-import { useTablePagination } from "../hooks/use-table-pagination";
 import { formatLongDate, getPromoterStatusColor } from "../utils/formatters";
 import { PROMOTER_CODE_LABEL } from "../utils/uiLabels";
 
@@ -28,15 +28,6 @@ function PencilIcon() {
       <path d="M2 21a8 8 0 0 1 10.821-7.487" />
       <path d="M21.378 16.626a1 1 0 0 0-3.004-3.004l-4.01 4.012a2 2 0 0 0-.506.854l-.837 2.87a.5.5 0 0 0 .62.62l2.87-.837a2 2 0 0 0 .854-.506z" />
       <circle cx="10" cy="8" r="5" />
-    </svg>
-  );
-}
-
-function SearchIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="grey" strokeWidth="2">
-      <path d="m21 21-4.34-4.34" />
-      <circle cx="11" cy="11" r="8" />
     </svg>
   );
 }
@@ -160,17 +151,6 @@ export default function PromotersPage() {
     return 0;
   });
 
-  const {
-    currentPage,
-    paginatedItems: paginatedPromoters,
-    setCurrentPage,
-    totalPages,
-  } = useTablePagination(sortedPromoters, [
-    searchTerm,
-    promoters.length,
-    sortKey,
-    sortDirection,
-  ]);
   const {
     data: editingPromoterBrands = [],
     isLoading: isLoadingBrands,
@@ -308,128 +288,125 @@ export default function PromotersPage() {
         <div className="card-header">
           <h2>Promoters Management</h2>
           <div className="search-section">
-            <div className="search-bar">
-              <SearchIcon />
-              <input
-                type="text"
-                value={searchTerm}
-                placeholder="Search promo code..."
-                onChange={(event) => setSearchTerm(event.target.value)}
-              />
-            </div>
+            <SearchBar
+              ariaLabel="Search promoters"
+              value={searchTerm}
+              onChange={setSearchTerm}
+              placeholder="Search promo code..."
+            />
           </div>
         </div>
 
-        <div className="table-outer-border">
-          <table id="promotersTable" className="data-table">
-            <thead>
-              <tr>
-                <th className="sortable-header">
+        <DataTable
+          columns={[
+            {
+              header: (
+                <button
+                  type="button"
+                  className={`sortable-label is-button${sortKey === "promoterCode" ? ` is-${sortDirection}` : ""}`}
+                  onClick={() => handleSort("promoterCode")}
+                >
+                  {PROMOTER_CODE_LABEL}
+                </button>
+              ),
+              headerClassName: "sortable-header",
+              key: "promoterCode",
+              render: (promoter) => promoter.promoterCode || "—",
+            },
+            {
+              cellClassName: "brands-column",
+              header: "Brands",
+              key: "brands",
+              render: (promoter) => (
+                <PromoterBrandsCell promoterId={promoter.promoterId} />
+              ),
+            },
+            {
+              header: (
+                <button
+                  type="button"
+                  className={`sortable-label is-button${sortKey === "status" ? ` is-${sortDirection}` : ""}`}
+                  onClick={() => handleSort("status")}
+                >
+                  Status
+                </button>
+              ),
+              headerClassName: "sortable-header",
+              key: "status",
+              render: (promoter) => (
+                <span
+                  style={{
+                    color: getPromoterStatusColor(promoter.status),
+                    fontWeight: 700,
+                  }}
+                >
+                  {promoter.status}
+                </span>
+              ),
+            },
+            {
+              header: (
+                <button
+                  type="button"
+                  className={`sortable-label is-button${sortKey === "createdOn" ? ` is-${sortDirection}` : ""}`}
+                  onClick={() => handleSort("createdOn")}
+                >
+                  Date Added
+                </button>
+              ),
+              headerClassName: "sortable-header",
+              key: "createdOn",
+              render: (promoter) => formatLongDate(promoter.createdOn),
+            },
+            {
+              header: (
+                <button
+                  type="button"
+                  className={`sortable-label is-button${sortKey === "lastUpdated" ? ` is-${sortDirection}` : ""}`}
+                  onClick={() => handleSort("lastUpdated")}
+                >
+                  Last Updated
+                </button>
+              ),
+              headerClassName: "sortable-header",
+              key: "lastUpdated",
+              render: (promoter) => formatLongDate(promoter.lastUpdated),
+            },
+            {
+              cellClassName: "actions-column",
+              header: "Action",
+              headerClassName: "actions-column",
+              key: "actions",
+              render: (promoter) => (
+                <div className="action-icons">
                   <button
                     type="button"
-                    className={`sortable-label is-button${sortKey === "promoterCode" ? ` is-${sortDirection}` : ""}`}
-                    onClick={() => handleSort("promoterCode")}
+                    className="icon-btn icon-edit"
+                    title="Edit"
+                    onClick={() => openEditModal(promoter)}
                   >
-                    {PROMOTER_CODE_LABEL}
+                    <PencilIcon />
                   </button>
-                </th>
-                <th>Brands</th>
-                <th className="sortable-header">
-                  <button
-                    type="button"
-                    className={`sortable-label is-button${sortKey === "status" ? ` is-${sortDirection}` : ""}`}
-                    onClick={() => handleSort("status")}
-                  >
-                    Status
-                  </button>
-                </th>
-                <th className="sortable-header">
-                  <button
-                    type="button"
-                    className={`sortable-label is-button${sortKey === "createdOn" ? ` is-${sortDirection}` : ""}`}
-                    onClick={() => handleSort("createdOn")}
-                  >
-                    Date Added
-                  </button>
-                </th>
-                <th className="sortable-header">
-                  <button
-                    type="button"
-                    className={`sortable-label is-button${sortKey === "lastUpdated" ? ` is-${sortDirection}` : ""}`}
-                    onClick={() => handleSort("lastUpdated")}
-                  >
-                    Last Updated
-                  </button>
-                </th>
-                <th className="actions-column">Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {isLoading ? (
-                <tr>
-                  <td colSpan="6">
-                    <div className="empty-state">Loading promoters...</div>
-                  </td>
-                </tr>
-              ) : isError ? (
-                <tr>
-                  <td colSpan="6">
-                    <div className="empty-state">
-                      {error?.message || "Unable to load promoters."}
-                    </div>
-                  </td>
-                </tr>
-              ) : paginatedPromoters.length ? (
-                paginatedPromoters.map((promoter) => (
-                  <tr key={promoter.id}>
-                    <td>{promoter.promoterCode || "—"}</td>
-                    <td className="brands-column">
-                      <PromoterBrandsCell promoterId={promoter.promoterId} />
-                    </td>
-                    <td>
-                      <span
-                        style={{
-                          color: getPromoterStatusColor(promoter.status),
-                          fontWeight: 700,
-                        }}
-                      >
-                        {promoter.status}
-                      </span>
-                    </td>
-                    <td>{formatLongDate(promoter.createdOn)}</td>
-                    <td>{formatLongDate(promoter.lastUpdated)}</td>
-                    <td className="actions-column">
-                      <div className="action-icons">
-                        <button
-                          type="button"
-                          className="icon-btn icon-edit"
-                          title="Edit"
-                          onClick={() => openEditModal(promoter)}
-                        >
-                          <PencilIcon />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan="6">
-                    <div className="empty-state">No promoters match your search.</div>
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-
-        <div className="card-footer">
-          <Pagination
-            currentPage={currentPage}
-            totalPages={totalPages}
-            onPageChange={setCurrentPage}
-          />
-        </div>
+                </div>
+              ),
+            },
+          ]}
+          dependencies={[
+            searchTerm,
+            promoters.length,
+            sortKey,
+            sortDirection,
+          ]}
+          emptyMessage="No promoters match your search."
+          error={error}
+          errorMessage="Unable to load promoters."
+          getRowKey={(promoter) => promoter.id}
+          isError={isError}
+          isLoading={isLoading}
+          items={sortedPromoters}
+          loadingMessage="Loading promoters..."
+          tableId="promotersTable"
+        />
       </div>
 
       <Modal
@@ -453,7 +430,7 @@ export default function PromotersPage() {
           </button>
         </div>
 
-        <form className="promoter-edit-form" onSubmit={handleEditSubmit}>
+        <form className="promoter-edit-form" onSubmit={handleEditSubmit} noValidate>
           <div className="promoter-edit-summary">
             <div>
               <span className="promoter-edit-summary-label">{PROMOTER_CODE_LABEL}</span>

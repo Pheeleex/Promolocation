@@ -4,7 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useParams } from "react-router-dom";
 import Swal from "sweetalert2";
 import AppLayout from "../components/AppLayout";
-import Pagination from "../components/Pagination";
+import DataTable from "../components/DataTable";
 import {
   getIncidentsQueryKey,
   useIncidents,
@@ -15,7 +15,6 @@ import {
   getIncidentAuditTrailQueryKey,
   useIncidentAuditTrail,
 } from "../hooks/use-incident-audit-trail";
-import { useTablePagination } from "../hooks/use-table-pagination";
 import { useAutoResizeTextarea } from "../hooks/use-auto-resize-textarea";
 import { useAuthStore } from "../store/auth-store";
 import { isSpecialAdminUser } from "../utils/authAccess";
@@ -147,12 +146,6 @@ export default function IncidentDetailPage() {
     promoters.find((promoter) => promoter.promoterId === incident?.promoterId)
       ?.promoterCode || "";
   const { data: auditTrail = [] } = useIncidentAuditTrail(incident);
-  const {
-    currentPage: auditTrailPage,
-    paginatedItems: paginatedAuditTrail,
-    setCurrentPage: setAuditTrailPage,
-    totalPages: auditTrailTotalPages,
-  } = useTablePagination(auditTrail, [incident?.id, auditTrail.length]);
   const statusColor = getIncidentStatusColor(incident?.status);
   const isSpecialAdmin = isSpecialAdminUser(authUser);
   const availableStatusOptions = getAvailableIncidentStatusOptions(
@@ -425,7 +418,7 @@ export default function IncidentDetailPage() {
           <div className="description-section">
             <h3 className="card-section-title">{incidentActionTitle}:</h3>
             <p style={{ marginBottom: "16px", color: "#64748b" }}>{incidentActionHelperCopy}</p>
-            <form className="incident-action-form" onSubmit={handleStatusUpdate}>
+            <form className="incident-action-form" onSubmit={handleStatusUpdate} noValidate>
               <div className="incident-action-grid">
                 <div className="incident-input-group">
                   <label htmlFor="incidentStatus">
@@ -494,45 +487,37 @@ export default function IncidentDetailPage() {
               Every incident action is recorded here so the full review history stays visible.
             </p>
 
-            <div className="audit-trail-table-wrapper">
-              <table className="audit-trail-table">
-                <thead>
-                  <tr>
-                    <th>User ID</th>
-                    <th>Action</th>
-                    <th>Comment</th>
-                    <th>Date &amp; Time</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {paginatedAuditTrail.length ? (
-                    paginatedAuditTrail.map((auditEntry) => (
-                      <tr key={auditEntry.id}>
-                        <td>{auditEntry.userId}</td>
-                        <td>{auditEntry.action}</td>
-                        <td>{auditEntry.comment || "--"}</td>
-                        <td>{formatLongDate(auditEntry.dateTime)}</td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan="4">
-                        <div className="audit-trail-empty-state">
-                          No audit entries have been recorded for this incident yet.
-                        </div>
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-            <div className="card-footer audit-trail-footer">
-              <Pagination
-                currentPage={auditTrailPage}
-                totalPages={auditTrailTotalPages}
-                onPageChange={setAuditTrailPage}
-              />
-            </div>
+            <DataTable
+              columns={[
+                {
+                  header: "User ID",
+                  key: "userId",
+                  render: (auditEntry) => auditEntry.userId,
+                },
+                {
+                  header: "Action",
+                  key: "action",
+                  render: (auditEntry) => auditEntry.action,
+                },
+                {
+                  header: "Comment",
+                  key: "comment",
+                  render: (auditEntry) => auditEntry.comment || "--",
+                },
+                {
+                  header: "Date & Time",
+                  key: "dateTime",
+                  render: (auditEntry) => formatLongDate(auditEntry.dateTime),
+                },
+              ]}
+              dependencies={[incident?.id, auditTrail.length]}
+              emptyMessage="No audit entries have been recorded for this incident yet."
+              footerClassName="card-footer audit-trail-footer"
+              getRowKey={(auditEntry) => auditEntry.id}
+              items={auditTrail}
+              tableClassName="audit-trail-table"
+              wrapperClassName="audit-trail-table-wrapper"
+            />
           </div>
         </div>
       </div>

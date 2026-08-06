@@ -138,7 +138,7 @@ export default function CreateIncidentForm({ onCancel, onSuccess }) {
       <h3>Report New Incident</h3>
       <p className="form-subtitle">Provide details about the issue noticed.</p>
       
-      <form onSubmit={handleSubmit}>
+      <form onSubmit={handleSubmit} noValidate>
         <div className="form-group">
           <label htmlFor="incident-title">
             Issue Title <span className="required-mark">*</span>

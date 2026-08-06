@@ -5,6 +5,8 @@ export type RawPromoterBrand = {
   user_id?: ApiId | null;
   promoter_id: string;
   brand: string;
+  promotion_code?: string | null;
+  promo_type?: string | null;
   promo_URL?: string | null;
   created_at?: string | null;
   updated_at?: string | null;
@@ -16,6 +18,8 @@ export type PromoterBrand = {
   userId: ApiId | null;
   promoterId: string;
   name: string;
+  promotionCode?: string | null;
+  promoType?: string | null;
   promoUrl: string | null;
   createdAt: string | null;
   updatedAt: string | null;
@@ -98,6 +102,16 @@ export type ImportBrandsCategoryResult = {
 export type ImportBrandsCategoryResponse = {
   status: number;
   message: string;
+  error_count?: number;
+  errors?: {
+    row?: number | string | null;
+    promoter_id?: string | null;
+    promoter_code?: string | null;
+    brand?: string | null;
+    error?: string | null;
+    reason?: string | null;
+    message?: string | null;
+  }[];
   summary: {
     total: number;
     imported: number;
@@ -110,6 +124,8 @@ export type ImportBrandsCategoryResponse = {
 export type CreatePromoterBrandPayload = {
   promoterId: string;
   brandName: string;
+  promotionCode?: string;
+  promoType?: string;
   promoFile?: File | null;
 };
 
@@ -145,6 +161,8 @@ export function mapPromoterBrand(
     userId: brand.user_id ?? null,
     promoterId: brand.promoter_id,
     name: brand.brand,
+    promotionCode: brand.promotion_code ?? null,
+    promoType: brand.promo_type ?? null,
     promoUrl: brand.promo_URL ?? null,
     createdAt: brand.created_at ?? null,
     updatedAt: brand.updated_at ?? brand.last_updated ?? null,

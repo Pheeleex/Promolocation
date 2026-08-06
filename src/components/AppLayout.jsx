@@ -37,6 +37,12 @@ const navItems = [
     iconType: "promotion",
   },
   {
+    key: "qr-codes",
+    label: "QR Repository",
+    path: "/qr-codes",
+    iconType: "qr",
+  },
+  {
     key: "incidents",
     label: "Incident History",
     path: "/incidents",
@@ -102,6 +108,28 @@ function PromotionNavIcon() {
       <path d="M16 3v4" />
       <path d="M4 10h16" />
       <path d="m9 15 2 2 4-4" />
+    </svg>
+  );
+}
+
+function QrNavIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <rect x="4" y="4" width="6" height="6" rx="1" />
+      <rect x="14" y="4" width="6" height="6" rx="1" />
+      <rect x="4" y="14" width="6" height="6" rx="1" />
+      <path d="M14 14h2v2" />
+      <path d="M20 14v3h-3" />
+      <path d="M14 20h2" />
+      <path d="M19 19h1v1" />
     </svg>
   );
 }
@@ -201,6 +229,8 @@ export default function AppLayout({
                       <BrandNavIcon />
                     ) : item.iconType === "promotion" ? (
                       <PromotionNavIcon />
+                    ) : item.iconType === "qr" ? (
+                      <QrNavIcon />
                     ) : (
                       <img src={assetPath(item.icon)} alt="" aria-hidden="true" />
                     )}

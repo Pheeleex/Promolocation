@@ -11,6 +11,7 @@ import IncidentHistoryPage from "./pages/IncidentHistoryPage";
 import LoginPage from "./pages/LoginPage";
 import PromotionsPage from "./pages/PromotionsPage";
 import PromotersPage from "./pages/PromotersPage";
+import QrCodesPage from "./pages/QrCodesPage";
 import ReportIncidentPage from "./pages/ReportIncidentPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
 import SettingsPage from "./pages/SettingsPage";
@@ -74,6 +75,14 @@ function AppRoutes() {
         element={
           <ProtectedRoute disallowSpecialAdmin>
             <PromotionsPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/qr-codes"
+        element={
+          <ProtectedRoute disallowSpecialAdmin>
+            <QrCodesPage />
           </ProtectedRoute>
         }
       />

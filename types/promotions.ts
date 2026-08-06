@@ -122,3 +122,70 @@ export type GetPromotionBrandsResponse = {
   total: number;
   brands: RawPromotionBrand[];
 };
+
+export type RawQrCodeRecord = {
+  id?: ApiId | null;
+  qr_code?: string | null;
+  qrCode?: string | null;
+  code?: string | null;
+  filename?: string | null;
+  file_name?: string | null;
+  promo_URL?: string | null;
+  promo_url?: string | null;
+  qr_url?: string | null;
+  qr_image?: string | null;
+  file_url?: string | null;
+  promoter_id?: string | null;
+  promoter_code?: string | null;
+  promotion_code?: string | null;
+  promotion_name?: string | null;
+  promotion_status?: string | null;
+  promotion_active?: number | string | boolean | null;
+  promo_type?: string | null;
+  brand?: string | null;
+  brand_name?: string | null;
+  promoter_name?: string | null;
+  promoter_email?: string | null;
+  promoter_phone?: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+};
+
+export type QrCodeRecord = {
+  id: ApiId;
+  code: string;
+  fileName: string;
+  imageUrl: string | null;
+  promoterId: string;
+  promoterName: string;
+  promoterEmail: string;
+  promoterPhone: string;
+  promotionCode: string;
+  promotionName: string;
+  promotionStatus: string;
+  promotionActive: boolean;
+  promoType: string;
+  brandName: string;
+  createdAt: string | null;
+  updatedAt: string | null;
+};
+
+export type ListQrCodesPayload = {
+  promoterId?: string;
+  promotionCode?: string;
+  brand?: string;
+  page?: number;
+  perPage?: number;
+};
+
+export type ListQrCodesResponse = {
+  status: number | string;
+  message: string;
+  total?: number;
+  page?: number;
+  per_page?: number;
+  qr_codes?: RawQrCodeRecord[];
+  qrCodes?: RawQrCodeRecord[];
+  data?: RawQrCodeRecord[];
+  results?: RawQrCodeRecord[];
+};

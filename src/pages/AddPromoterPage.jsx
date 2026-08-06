@@ -9,6 +9,7 @@ import {
   updatePromoter as updatePromoterRequest,
 } from "../api/promoters";
 import AppLayout from "../components/AppLayout";
+import { FormErrorSummary } from "../components/FormControls";
 import { PROMOTER_CODE_LABEL } from "../utils/uiLabels";
 
 const PROMOTER_CODE_PATTERN = /^[A-Z0-9]{5}$/;
@@ -45,7 +46,7 @@ function getPromoterIdValidationMessage(value) {
 
 export default function AddPromoterPage() {
   const [promoterIdInput, setPromoterIdInput] = useState("");
-  const [promoterIdError, setPromoterIdError] = useState("");
+  const [formErrors, setFormErrors] = useState([]);
   const [isPromoterActive, setIsPromoterActive] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const queryClient = useQueryClient();
@@ -55,7 +56,7 @@ export default function AddPromoterPage() {
 
   const resetForm = () => {
     setPromoterIdInput("");
-    setPromoterIdError("");
+    setFormErrors([]);
     setIsPromoterActive(true);
   };
 
@@ -69,10 +70,10 @@ export default function AddPromoterPage() {
     const normalizedPromoterId = normalizePromoterId(promoterIdInput);
     const validationMessage = getPromoterIdValidationMessage(promoterIdInput);
 
-    setPromoterIdError("");
+    setFormErrors([]);
 
     if (validationMessage) {
-      setPromoterIdError(validationMessage);
+      setFormErrors([validationMessage]);
       return;
     }
 
@@ -161,7 +162,7 @@ export default function AddPromoterPage() {
         error,
       });
 
-      setPromoterIdError(errorMessage);
+      setFormErrors([errorMessage]);
 
       Swal.fire({
         icon: "error",
@@ -189,7 +190,7 @@ export default function AddPromoterPage() {
             <span className="close-form">x</span>
           </div>
 
-          <form id="addPromoterForm" onSubmit={handleSubmit}>
+          <form id="addPromoterForm" onSubmit={handleSubmit} noValidate>
             <div className="form-group">
               <label htmlFor="promoterId">
                 {PROMOTER_CODE_LABEL} <span className="required-mark">*</span>
@@ -198,7 +199,7 @@ export default function AddPromoterPage() {
               <input
                 id="promoterId"
                 type="text"
-                className={`promoter-id-input${promoterIdError ? " input-error" : ""}`}
+                className="promoter-id-input"
                 placeholder="A1B2C"
                 value={promoterIdInput}
                 disabled={isSubmitting}
@@ -206,23 +207,19 @@ export default function AddPromoterPage() {
                 pattern="[A-Za-z0-9]{5}"
                 autoCorrect="off"
                 spellCheck="false"
-                aria-invalid={Boolean(promoterIdError)}
-                aria-describedby={promoterIdError ? "promoterId-error" : "promoterId-help"}
+                aria-invalid={Boolean(formErrors.length)}
+                aria-describedby="promoterId-help"
                 onChange={(event) => {
                   setPromoterIdInput(normalizePromoterId(event.target.value));
-                  setPromoterIdError("");
+                  setFormErrors([]);
                 }}
               />
-              {promoterIdError ? (
-                <p id="promoterId-error" className="form-error-text" role="alert">
-                  {promoterIdError}
-                </p>
-              ) : (
-                <p id="promoterId-help" className="form-meta-text">
-                  {`Use exactly ${PROMOTER_CODE_MAX_LENGTH} letters or numbers.`}
-                </p>
-              )}
+              <p id="promoterId-help" className="form-meta-text">
+                {`Use exactly ${PROMOTER_CODE_MAX_LENGTH} letters or numbers.`}
+              </p>
             </div>
+
+            <FormErrorSummary errors={formErrors} />
 
             <div
               className={`status-toggle ${isPromoterActive ? "status-toggle--active" : "status-toggle--inactive"}`}

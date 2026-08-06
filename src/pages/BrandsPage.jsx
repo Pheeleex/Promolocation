@@ -2,15 +2,16 @@ import React from "react";
 import { useMemo, useState } from "react";
 import Swal from "sweetalert2";
 import AppLayout from "../components/AppLayout";
+import DataTable from "../components/DataTable";
+import { FormErrorSummary } from "../components/FormControls";
 import Modal from "../components/Modal";
-import Pagination from "../components/Pagination";
+import SearchBar from "../components/SearchBar";
 import {
   useCreateSystemBrand,
   useDeleteSystemBrand,
   useManagedSystemBrands,
   useUpdateSystemBrand,
 } from "../hooks/use-promoters-brands";
-import { useTablePagination } from "../hooks/use-table-pagination";
 import { validateImageUpload } from "../utils/imageUploadValidation";
 
 const BRAND_LOGO_ACCEPT = ".jpg,.jpeg,.png,.gif,.webp,.svg";
@@ -20,15 +21,6 @@ const EMPTY_FORM = {
   brandImage: null,
   isActive: true,
 };
-
-function SearchIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="grey" strokeWidth="2">
-      <path d="m21 21-4.34-4.34" />
-      <circle cx="11" cy="11" r="8" />
-    </svg>
-  );
-}
 
 function BrandLogoPreview({ brand, previewUrl }) {
   const logoUrl = previewUrl || brand?.logoUrl;
@@ -63,7 +55,7 @@ export default function BrandsPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [editingBrand, setEditingBrand] = useState(null);
   const [form, setForm] = useState(EMPTY_FORM);
-  const [formError, setFormError] = useState("");
+  const [formErrors, setFormErrors] = useState([]);
   const [previewUrl, setPreviewUrl] = useState("");
   const {
     data: brands = [],
@@ -95,17 +87,10 @@ export default function BrandsPage() {
         .includes(normalizedSearchTerm),
     );
   }, [brands, searchTerm]);
-  const {
-    currentPage,
-    paginatedItems: paginatedBrands,
-    setCurrentPage,
-    totalPages,
-  } = useTablePagination(filteredBrands, [searchTerm, brands.length]);
-
   const openCreateModal = () => {
     setEditingBrand({ mode: "create" });
     setForm(EMPTY_FORM);
-    setFormError("");
+    setFormErrors([]);
     setPreviewUrl("");
   };
 
@@ -116,7 +101,7 @@ export default function BrandsPage() {
       brandImage: null,
       isActive: brand.isActive !== false,
     });
-    setFormError("");
+    setFormErrors([]);
     setPreviewUrl("");
   };
 
@@ -127,7 +112,7 @@ export default function BrandsPage() {
 
     setEditingBrand(null);
     setForm(EMPTY_FORM);
-    setFormError("");
+    setFormErrors([]);
     setPreviewUrl("");
   };
 
@@ -144,20 +129,7 @@ export default function BrandsPage() {
       return;
     }
 
-    const validationError = validateImageUpload(file, {
-      allowedExtensions: BRAND_LOGO_EXTENSIONS,
-      fileLabel: "Brand logo",
-    });
-
-    if (validationError) {
-      setFormError(validationError);
-      event.target.value = "";
-      setForm((currentForm) => ({ ...currentForm, brandImage: null }));
-      setPreviewUrl("");
-      return;
-    }
-
-    setFormError("");
+    setFormErrors([]);
     setForm((currentForm) => ({ ...currentForm, brandImage: file }));
     setPreviewUrl(URL.createObjectURL(file));
   };
@@ -166,14 +138,29 @@ export default function BrandsPage() {
     event.preventDefault();
 
     const brandName = form.brandName.trim();
+    const validationErrors = [];
 
     if (!brandName) {
-      setFormError("Brand name is required.");
-      return;
+      validationErrors.push("Brand name is required.");
     }
 
     if (isCreating && !form.brandImage) {
-      setFormError("Brand logo is required.");
+      validationErrors.push("Brand logo is required.");
+    }
+
+    if (form.brandImage) {
+      const logoValidationError = validateImageUpload(form.brandImage, {
+        allowedExtensions: BRAND_LOGO_EXTENSIONS,
+        fileLabel: "Brand logo",
+      });
+
+      if (logoValidationError) {
+        validationErrors.push(logoValidationError);
+      }
+    }
+
+    if (validationErrors.length) {
+      setFormErrors(validationErrors);
       return;
     }
 
@@ -263,101 +250,88 @@ export default function BrandsPage() {
         </div>
 
         <div className="brands-admin-toolbar">
-          <div className="search-bar">
-            <SearchIcon />
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(event) => setSearchTerm(event.target.value)}
-              placeholder="Search brands"
-            />
-          </div>
+          <SearchBar
+            ariaLabel="Search brands"
+            value={searchTerm}
+            onChange={setSearchTerm}
+            placeholder="Search brands"
+          />
           <span className="brands-admin-count">
             {filteredBrands.length} of {brands.length} brands
           </span>
         </div>
 
-        {isError ? (
-          <div className="brands-admin-state" role="alert">
-            {error?.message || "Unable to load brands right now."}
-          </div>
-        ) : (
-          <div className="table-outer-border">
-            <table className="data-table brands-admin-table">
-              <thead>
-                <tr>
-                  <th>Brand</th>
-                  <th>Status</th>
-                  <th>Created</th>
-                  <th>Updated</th>
-                  <th className="actions-column">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {isLoading ? (
-                  <tr>
-                    <td colSpan="5" className="brands-admin-empty">
-                      Loading brands...
-                    </td>
-                  </tr>
-                ) : paginatedBrands.length ? (
-                  paginatedBrands.map((brand) => (
-                    <tr key={brand.id}>
-                      <td>
-                        <div className="brand-admin-name-cell">
-                          <BrandLogoPreview brand={brand} />
-                          <div>
-                            <strong>{brand.name}</strong>
-                            <span>{brand.logoUrl ? "Logo available" : "No logo"}</span>
-                          </div>
-                        </div>
-                      </td>
-                      <td>
-                        <span
-                          className={`brand-admin-status ${
-                            brand.isActive === false ? "is-inactive" : "is-active"
-                          }`}
-                        >
-                          {brand.isActive === false ? "Inactive" : "Active"}
-                        </span>
-                      </td>
-                      <td>{formatBrandDate(brand.createdAt)}</td>
-                      <td>{formatBrandDate(brand.updatedAt)}</td>
-                      <td className="actions-column">
-                        <div className="brand-admin-actions">
-                          <button type="button" onClick={() => openEditModal(brand)}>
-                            Edit
-                          </button>
-                          <button
-                            type="button"
-                            className="is-danger"
-                            disabled={isDeletingBrand}
-                            onClick={() => handleDeleteBrand(brand)}
-                          >
-                            {isDeletingBrand ? "Deleting..." : "Delete"}
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan="5" className="brands-admin-empty">
-                      No brands found.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        )}
-        <div className="card-footer">
-          <Pagination
-            currentPage={currentPage}
-            totalPages={totalPages}
-            onPageChange={setCurrentPage}
-          />
-        </div>
+        <DataTable
+          columns={[
+            {
+              header: "Brand",
+              key: "brand",
+              render: (brand) => (
+                <div className="brand-admin-name-cell">
+                  <BrandLogoPreview brand={brand} />
+                  <div>
+                    <strong>{brand.name}</strong>
+                    <span>{brand.logoUrl ? "Logo available" : "No logo"}</span>
+                  </div>
+                </div>
+              ),
+            },
+            {
+              header: "Status",
+              key: "status",
+              render: (brand) => (
+                <span
+                  className={`brand-admin-status ${
+                    brand.isActive === false ? "is-inactive" : "is-active"
+                  }`}
+                >
+                  {brand.isActive === false ? "Inactive" : "Active"}
+                </span>
+              ),
+            },
+            {
+              header: "Created",
+              key: "created",
+              render: (brand) => formatBrandDate(brand.createdAt),
+            },
+            {
+              header: "Updated",
+              key: "updated",
+              render: (brand) => formatBrandDate(brand.updatedAt),
+            },
+            {
+              cellClassName: "actions-column",
+              header: "Actions",
+              headerClassName: "actions-column",
+              key: "actions",
+              render: (brand) => (
+                <div className="brand-admin-actions">
+                  <button type="button" onClick={() => openEditModal(brand)}>
+                    Edit
+                  </button>
+                  <button
+                    type="button"
+                    className="is-danger"
+                    disabled={isDeletingBrand}
+                    onClick={() => handleDeleteBrand(brand)}
+                  >
+                    {isDeletingBrand ? "Deleting..." : "Delete"}
+                  </button>
+                </div>
+              ),
+            },
+          ]}
+          dependencies={[searchTerm, brands.length]}
+          emptyMessage="No brands found."
+          error={error}
+          errorMessage="Unable to load brands right now."
+          getRowKey={(brand) => brand.id}
+          isError={isError}
+          isLoading={isLoading}
+          items={filteredBrands}
+          loadingMessage="Loading brands..."
+          tableClassName="data-table brands-admin-table"
+        />
       </div>
 
       <Modal
@@ -381,7 +355,7 @@ export default function BrandsPage() {
           </button>
         </div>
 
-        <form className="brand-admin-form" onSubmit={handleSubmit}>
+        <form className="brand-admin-form" onSubmit={handleSubmit} noValidate>
           <div className="brand-admin-logo-panel">
             <BrandLogoPreview
               brand={{
@@ -391,7 +365,9 @@ export default function BrandsPage() {
               previewUrl={previewUrl}
             />
             <div>
-              <label htmlFor="brandLogo">Brand Logo</label>
+              <label htmlFor="brandLogo">
+                Brand Logo {isCreating ? <span className="required-mark">*</span> : null}
+              </label>
               <input
                 id="brandLogo"
                 type="file"
@@ -399,12 +375,12 @@ export default function BrandsPage() {
                 disabled={isSaving}
                 onChange={handleLogoChange}
               />
-              <p>Use a square or wide transparent logo when available.</p>
+              <p>Only JPG, PNG, SVG, AVIF and other image extension files allowed. Max 3MB.</p>
             </div>
           </div>
 
           <div className="form-group">
-            <label htmlFor="brandName">Brand Name</label>
+            <label htmlFor="brandName">Brand Name <span className="required-mark">*</span></label>
             <input
               id="brandName"
               type="text"
@@ -415,7 +391,7 @@ export default function BrandsPage() {
                   ...currentForm,
                   brandName: event.target.value,
                 }));
-                setFormError("");
+                setFormErrors([]);
               }}
               placeholder="Brand name"
             />
@@ -450,11 +426,7 @@ export default function BrandsPage() {
             </span>
           </label>
 
-          {formError ? (
-            <p className="form-error-text" role="alert">
-              {formError}
-            </p>
-          ) : null}
+          <FormErrorSummary errors={formErrors} />
 
           <div className="brand-admin-form-actions">
             <button

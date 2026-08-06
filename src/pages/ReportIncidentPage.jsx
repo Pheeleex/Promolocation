@@ -154,7 +154,7 @@ export default function ReportIncidentPage() {
         </div>
 
         <div className="report-card-container">
-          <form onSubmit={handleSubmit} className="report-form-premium">
+          <form onSubmit={handleSubmit} className="report-form-premium" noValidate>
             <div className="report-form-grid">
               <div className="report-form-left">
                 <div className="input-field-group">

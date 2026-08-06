@@ -2,6 +2,7 @@ import React from "react";
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import Swal from "sweetalert2";
+import { FormErrorSummary } from "../components/FormControls";
 import PasswordField from "../components/PasswordField";
 import { useAuth } from "../context/AuthContext";
 import { useResetAdminPassword } from "../hooks/use-admin-auth";
@@ -19,12 +20,7 @@ export default function ResetPasswordPage() {
   const [code, setCode] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [errors, setErrors] = useState({
-    email: "",
-    code: "",
-    newPassword: "",
-    confirmPassword: "",
-  });
+  const [formErrors, setFormErrors] = useState([]);
   const { authUser } = useAuth();
   const { mutateAsync: submitPasswordReset, isPending } = useResetAdminPassword();
   const navigate = useNavigate();
@@ -49,20 +45,30 @@ export default function ResetPasswordPage() {
     const trimmedCode = code.trim();
     const trimmedNewPassword = newPassword.trim();
     const trimmedConfirmPassword = confirmPassword.trim();
-    const nextErrors = {
-      email: normalizedEmail ? "" : "Email is required.",
-      code: trimmedCode ? "" : "Reset code is required.",
-      newPassword: trimmedNewPassword ? "" : "New password is required.",
-      confirmPassword: trimmedConfirmPassword ? "" : "Please confirm the new password.",
-    };
+    const validationErrors = [];
 
-    if (!nextErrors.confirmPassword && trimmedNewPassword !== trimmedConfirmPassword) {
-      nextErrors.confirmPassword = "Passwords do not match.";
+    if (!normalizedEmail) {
+      validationErrors.push("Email is required.");
     }
 
-    setErrors(nextErrors);
+    if (!trimmedCode) {
+      validationErrors.push("Reset code is required.");
+    }
 
-    if (Object.values(nextErrors).some(Boolean)) {
+    if (!trimmedNewPassword) {
+      validationErrors.push("New password is required.");
+    }
+
+    if (!trimmedConfirmPassword) {
+      validationErrors.push("Please confirm the new password.");
+    }
+
+    if (trimmedNewPassword && trimmedConfirmPassword && trimmedNewPassword !== trimmedConfirmPassword) {
+      validationErrors.push("Passwords do not match.");
+    }
+
+    if (validationErrors.length) {
+      setFormErrors(validationErrors);
       return;
     }
 
@@ -110,7 +116,7 @@ export default function ResetPasswordPage() {
           your dashboard account.
         </p>
 
-        <form className="login-form" onSubmit={handleSubmit}>
+        <form className="login-form" onSubmit={handleSubmit} noValidate>
           <div className="input-group">
             <label htmlFor="reset-email">
               Email Address <span className="required-mark">*</span>
@@ -122,22 +128,12 @@ export default function ResetPasswordPage() {
               value={email}
               disabled={isPending}
               autoComplete="email"
-              aria-invalid={Boolean(errors.email)}
-              aria-describedby={errors.email ? "reset-email-error" : undefined}
-              className={errors.email ? "input-error" : ""}
+              aria-invalid={Boolean(formErrors.length)}
               onChange={(event) => {
                 setEmail(event.target.value);
-                setErrors((currentErrors) => ({
-                  ...currentErrors,
-                  email: "",
-                }));
+                setFormErrors([]);
               }}
             />
-            {errors.email ? (
-              <p id="reset-email-error" className="field-error" role="alert">
-                {errors.email}
-              </p>
-            ) : null}
           </div>
 
           <div className="input-group">
@@ -152,26 +148,15 @@ export default function ResetPasswordPage() {
               value={code}
               disabled={isPending}
               autoComplete="one-time-code"
-              aria-invalid={Boolean(errors.code)}
-              aria-describedby={errors.code ? "reset-code-error" : undefined}
-              className={errors.code ? "input-error" : ""}
+              aria-invalid={Boolean(formErrors.length)}
               onChange={(event) => {
                 setCode(event.target.value);
-                setErrors((currentErrors) => ({
-                  ...currentErrors,
-                  code: "",
-                }));
+                setFormErrors([]);
               }}
             />
-            {errors.code ? (
-              <p id="reset-code-error" className="field-error" role="alert">
-                {errors.code}
-              </p>
-            ) : (
-              <p className="field-helper">
-                Use the code that was sent from the forgot-password flow.
-              </p>
-            )}
+            <p className="field-helper">
+              Use the code that was sent from the forgot-password flow.
+            </p>
           </div>
 
           <PasswordField
@@ -180,12 +165,8 @@ export default function ResetPasswordPage() {
             value={newPassword}
             onChange={(event) => {
               setNewPassword(event.target.value);
-              setErrors((currentErrors) => ({
-                ...currentErrors,
-                newPassword: "",
-              }));
+              setFormErrors([]);
             }}
-            error={errors.newPassword}
             disabled={isPending}
             placeholder="New password"
             autoComplete="new-password"
@@ -198,17 +179,15 @@ export default function ResetPasswordPage() {
             value={confirmPassword}
             onChange={(event) => {
               setConfirmPassword(event.target.value);
-              setErrors((currentErrors) => ({
-                ...currentErrors,
-                confirmPassword: "",
-              }));
+              setFormErrors([]);
             }}
-            error={errors.confirmPassword}
             disabled={isPending}
             placeholder="Confirm new password"
             autoComplete="new-password"
             required
           />
+
+          <FormErrorSummary errors={formErrors} />
 
           <button type="submit" className="login-btn" disabled={isPending}>
             {isPending ? "Resetting..." : "Reset Password"}

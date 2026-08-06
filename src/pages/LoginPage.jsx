@@ -2,6 +2,7 @@ import React from "react";
 import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
+import { FormErrorSummary } from "../components/FormControls";
 import PasswordField from "../components/PasswordField";
 import { useAuth } from "../context/AuthContext";
 import { useLogin } from "../hooks/useLogin";
@@ -33,10 +34,7 @@ function getLoginErrorMessage(status) {
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [errors, setErrors] = useState({
-    email: "",
-    password: "",
-  });
+  const [formErrors, setFormErrors] = useState([]);
   const { authUser, logout } = useAuth();
   const { mutateAsync: loginUser, isPending } = useLogin();
   const navigate = useNavigate();
@@ -68,10 +66,14 @@ export default function LoginPage() {
     const trimmedPassword = password.trim();
 
     if (!trimmedEmail || !trimmedPassword) {
-      setErrors({
-        email: trimmedEmail ? "" : "Email is required.",
-        password: trimmedPassword ? "" : "Password is required.",
-      });
+      const validationErrors = [];
+      if (!trimmedEmail) {
+        validationErrors.push("Email is required.");
+      }
+      if (!trimmedPassword) {
+        validationErrors.push("Password is required.");
+      }
+      setFormErrors(validationErrors);
       return;
     }
 
@@ -114,7 +116,7 @@ export default function LoginPage() {
 
         <h1>Dashboard Login</h1>
 
-        <form className="login-form" onSubmit={handleSubmit}>
+        <form className="login-form" onSubmit={handleSubmit} noValidate>
           <div className="input-group">
             <label htmlFor="email">
               Email Address <span className="required-mark">*</span>
@@ -126,22 +128,12 @@ export default function LoginPage() {
               value={email}
               disabled={isPending}
               autoComplete="email"
-              aria-invalid={Boolean(errors.email)}
-              aria-describedby={errors.email ? "email-error" : undefined}
-              className={errors.email ? "input-error" : ""}
+              aria-invalid={Boolean(formErrors.length)}
               onChange={(event) => {
                 setEmail(event.target.value);
-                setErrors((currentErrors) => ({
-                  ...currentErrors,
-                  email: "",
-                }));
+                setFormErrors([]);
               }}
             />
-            {errors.email ? (
-              <p id="email-error" className="field-error" role="alert">
-                {errors.email}
-              </p>
-            ) : null}
           </div>
 
           <PasswordField
@@ -150,12 +142,8 @@ export default function LoginPage() {
             value={password}
             onChange={(event) => {
               setPassword(event.target.value);
-              setErrors((currentErrors) => ({
-                ...currentErrors,
-                password: "",
-              }));
+              setFormErrors([]);
             }}
-            error={errors.password}
             disabled={isPending}
             placeholder="Password...."
             autoComplete="current-password"
@@ -167,6 +155,8 @@ export default function LoginPage() {
               Forgot password?
             </Link>
           </div>
+
+          <FormErrorSummary errors={formErrors} />
 
           <button type="submit" className="login-btn" disabled={isPending}>
             {isPending ? "Logging in..." : "Login"}

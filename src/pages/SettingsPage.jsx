@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
 import AppLayout from "../components/AppLayout";
+import { FormErrorSummary } from "../components/FormControls";
 import PasswordField from "../components/PasswordField";
 import { useAuth } from "../context/AuthContext";
 import { useChangePassword } from "../hooks/use-admin-auth";
@@ -13,11 +14,7 @@ export default function SettingsPage() {
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [errors, setErrors] = useState({
-    currentPassword: "",
-    newPassword: "",
-    confirmPassword: "",
-  });
+  const [formErrors, setFormErrors] = useState([]);
   const { authUser, logout } = useAuth();
   const { mutateAsync: submitPasswordChange, isPending } = useChangePassword();
   const {
@@ -39,27 +36,34 @@ export default function SettingsPage() {
     const trimmedCurrentPassword = currentPassword.trim();
     const trimmedNewPassword = newPassword.trim();
     const trimmedConfirmPassword = confirmPassword.trim();
-    const nextErrors = {
-      currentPassword: trimmedCurrentPassword ? "" : "Current password is required.",
-      newPassword: trimmedNewPassword ? "" : "New password is required.",
-      confirmPassword: trimmedConfirmPassword ? "" : "Please confirm the new password.",
-    };
+    const validationErrors = [];
+
+    if (!trimmedCurrentPassword) {
+      validationErrors.push("Current password is required.");
+    }
+
+    if (!trimmedNewPassword) {
+      validationErrors.push("New password is required.");
+    }
+
+    if (!trimmedConfirmPassword) {
+      validationErrors.push("Please confirm the new password.");
+    }
 
     if (
-      !nextErrors.newPassword &&
-      !nextErrors.currentPassword &&
+      trimmedCurrentPassword &&
+      trimmedNewPassword &&
       trimmedCurrentPassword === trimmedNewPassword
     ) {
-      nextErrors.newPassword = "Choose a different password from the current one.";
+      validationErrors.push("Choose a different password from the current one.");
     }
 
-    if (!nextErrors.confirmPassword && trimmedNewPassword !== trimmedConfirmPassword) {
-      nextErrors.confirmPassword = "Passwords do not match.";
+    if (trimmedNewPassword && trimmedConfirmPassword && trimmedNewPassword !== trimmedConfirmPassword) {
+      validationErrors.push("Passwords do not match.");
     }
 
-    setErrors(nextErrors);
-
-    if (Object.values(nextErrors).some(Boolean)) {
+    if (validationErrors.length) {
+      setFormErrors(validationErrors);
       return;
     }
 
@@ -156,19 +160,15 @@ export default function SettingsPage() {
             {helperText}
           </div>
 
-          <form className="settings-form" onSubmit={handleSubmit}>
+          <form className="settings-form" onSubmit={handleSubmit} noValidate>
             <PasswordField
               id="settings-current-password"
               label="Current Password"
               value={currentPassword}
               onChange={(event) => {
                 setCurrentPassword(event.target.value);
-                setErrors((currentErrors) => ({
-                  ...currentErrors,
-                  currentPassword: "",
-                }));
+                setFormErrors([]);
               }}
-              error={errors.currentPassword}
               disabled={isPending}
               placeholder="Current password"
               autoComplete="current-password"
@@ -181,12 +181,8 @@ export default function SettingsPage() {
               value={newPassword}
               onChange={(event) => {
                 setNewPassword(event.target.value);
-                setErrors((currentErrors) => ({
-                  ...currentErrors,
-                  newPassword: "",
-                }));
+                setFormErrors([]);
               }}
-              error={errors.newPassword}
               disabled={isPending}
               placeholder="New password"
               autoComplete="new-password"
@@ -200,17 +196,15 @@ export default function SettingsPage() {
               value={confirmPassword}
               onChange={(event) => {
                 setConfirmPassword(event.target.value);
-                setErrors((currentErrors) => ({
-                  ...currentErrors,
-                  confirmPassword: "",
-                }));
+                setFormErrors([]);
               }}
-              error={errors.confirmPassword}
               disabled={isPending}
               placeholder="Confirm new password"
               autoComplete="new-password"
               required
             />
+
+            <FormErrorSummary errors={formErrors} />
 
             <button
               type="submit"
