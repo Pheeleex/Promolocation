@@ -308,6 +308,7 @@ export async function uploadPromotionQrCodesBulk(
   const formData = new FormData();
 
   formData.set("file", payload.file);
+  formData.set("promotion_code", payload.promotionCode);
 
   return assertApiSuccess(
     await authenticatedAdminFormPost<UploadPromotionQrCodesResponse>(

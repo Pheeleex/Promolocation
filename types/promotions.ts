@@ -90,6 +90,7 @@ export type DeletePromotionPayload = {
 
 export type UploadPromotionQrCodesPayload = {
   file: File;
+  promotionCode: string;
 };
 
 export type UploadPromotionQrCodesResponse = {

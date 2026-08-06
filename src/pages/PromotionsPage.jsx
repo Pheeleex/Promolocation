@@ -6,6 +6,12 @@ import Swal from "sweetalert2";
 import AppLayout from "../components/AppLayout";
 import DataTable from "../components/DataTable";
 import {
+  AssignmentIcon,
+  AssignmentMetricCard,
+  AssignmentStatusPill,
+  CopyIcon,
+} from "../components/promotion-assignment/AssignmentWidgets";
+import {
   Button,
   DateInput,
   FileInput,
@@ -33,6 +39,15 @@ import {
   validateFileSize,
   validateImageUpload,
 } from "../utils/imageUploadValidation";
+import {
+  canManagePromotion,
+  formatDate,
+  getPromotionCode,
+  getPromotionState,
+  hasSamePromotionId,
+  isCurrentlyActivePromotion,
+  sortPromotions,
+} from "../utils/promotionViewHelpers";
 
 const EMPTY_PROMOTION_FORM = {
   name: "",
@@ -51,185 +66,6 @@ const PROMOTION_STATUS_OPTIONS = [
   { label: "Inactive", value: "inactive" },
   { label: "Expired", value: "expired" },
 ];
-
-function formatDate(value) {
-  if (!value) {
-    return "--";
-  }
-
-  const date = new Date(`${value}T00:00:00`);
-
-  if (Number.isNaN(date.getTime())) {
-    return value;
-  }
-
-  return new Intl.DateTimeFormat(undefined, {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  }).format(date);
-}
-
-function getPromotionState(promotion) {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const startDate = promotion.startDate ? new Date(`${promotion.startDate}T00:00:00`) : null;
-  const endDate = promotion.endDate ? new Date(`${promotion.endDate}T00:00:00`) : null;
-
-  if (!promotion.isActive) {
-    if (promotion.status === "draft") {
-      return { label: "Draft", className: "is-draft" };
-    }
-
-    if (promotion.status === "expired") {
-      return { label: "Expired", className: "is-expired" };
-    }
-
-    return { label: "Inactive", className: "is-inactive" };
-  }
-
-  if (startDate && today < startDate) {
-    return { label: "Scheduled", className: "is-scheduled" };
-  }
-
-  if (endDate && today > endDate) {
-    return { label: "Expired", className: "is-expired" };
-  }
-
-  return { label: "Active", className: "is-active" };
-}
-
-function canManagePromotion(promotion) {
-  const state = getPromotionState(promotion);
-
-  return state.label === "Active" || state.label === "Scheduled";
-}
-
-function isCurrentlyActivePromotion(promotion) {
-  return getPromotionState(promotion).label === "Active";
-}
-
-function getPromotionCode(promotion) {
-  return promotion?.promotionCode || String(promotion?.id || "");
-}
-
-function AssignmentIcon({ type }) {
-  const iconPaths = {
-    calendar: (
-      <>
-        <path d="M8 2v4" />
-        <path d="M16 2v4" />
-        <rect x="3" y="5" width="18" height="16" rx="2" />
-        <path d="M3 10h18" />
-      </>
-    ),
-    chevronDown: (
-      <>
-        <path d="m6 9 6 6 6-6" />
-      </>
-    ),
-    check: (
-      <>
-        <circle cx="12" cy="12" r="9" />
-        <path d="m9 12 2 2 4-4" />
-      </>
-    ),
-    file: (
-      <>
-        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z" />
-        <path d="M14 2v6h6" />
-        <path d="M8 13h8" />
-        <path d="M8 17h5" />
-      </>
-    ),
-    info: (
-      <>
-        <circle cx="12" cy="12" r="10" />
-        <path d="M12 16v-4" />
-        <path d="M12 8h.01" />
-      </>
-    ),
-    qr: (
-      <>
-        <rect x="4" y="4" width="5" height="5" rx="1" />
-        <rect x="15" y="4" width="5" height="5" rx="1" />
-        <rect x="4" y="15" width="5" height="5" rx="1" />
-        <path d="M15 15h2v2" />
-        <path d="M20 15v3h-3" />
-        <path d="M15 20h2" />
-        <path d="M20 20h.01" />
-      </>
-    ),
-    user: (
-      <>
-        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-        <circle cx="12" cy="7" r="4" />
-      </>
-    ),
-    upload: (
-      <>
-        <path d="M12 16V4" />
-        <path d="m7 9 5-5 5 5" />
-        <path d="M20 16.5A4.5 4.5 0 0 0 15.5 12H15a6 6 0 1 0-11.2 3" />
-        <path d="M16 20h2a4 4 0 0 0 0-8" />
-      </>
-    ),
-  };
-
-  return (
-    <svg
-      aria-hidden="true"
-      fill="none"
-      focusable="false"
-      stroke="currentColor"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth="2"
-      viewBox="0 0 24 24"
-    >
-      {iconPaths[type]}
-    </svg>
-  );
-}
-
-function CopyIcon() {
-  return (
-    <svg
-      aria-hidden="true"
-      fill="none"
-      focusable="false"
-      stroke="currentColor"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth="2"
-      viewBox="0 0 24 24"
-    >
-      <rect x="9" y="9" width="13" height="13" rx="2" />
-      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-    </svg>
-  );
-}
-
-function AssignmentStatusPill({ label, tone = "success" }) {
-  return (
-    <span className={`assignment-status-pill assignment-status-pill--${tone}`}>
-      <AssignmentIcon type={tone === "danger" ? "info" : "check"} />
-      {label}
-    </span>
-  );
-}
-
-function AssignmentMetricCard({ label, tone = "blue", value }) {
-  return (
-    <div className={`assignment-metric-card assignment-metric-card--${tone}`}>
-      <span>
-        <AssignmentIcon type={tone === "danger" ? "info" : tone === "purple" ? "calendar" : "check"} />
-      </span>
-      <strong>{value}</strong>
-      <small>{label}</small>
-    </div>
-  );
-}
 
 function getFileExtension(fileName) {
   return String(fileName || "").split(".").pop()?.toLowerCase() || "";
@@ -1249,17 +1085,7 @@ function getQrUploadStatus(response, uploadedAt) {
   }
 
   const uploadedCount = response.summary?.uploaded ?? 0;
-  const failedCount = response.summary?.failed ?? 0;
-  const warningCount = response.summary?.warnings ?? 0;
   const parts = [`${uploadedCount} code${uploadedCount === 1 ? "" : "s"} uploaded`];
-
-  if (failedCount > 0) {
-    parts.push(`${failedCount} failed`);
-  }
-
-  if (warningCount > 0) {
-    parts.push(`${warningCount} warning${warningCount === 1 ? "" : "s"}`);
-  }
 
   if (uploadedAt) {
     parts.push(formatUploadDate(uploadedAt));
@@ -1293,27 +1119,6 @@ function getWorkbookUploadStatus(response, uploadedAt) {
   }
 
   return parts.join(" · ");
-}
-
-function hasSamePromotionId(firstId, secondId) {
-  return String(firstId) === String(secondId);
-}
-
-function getPromotionSortTime(promotion) {
-  const timestamp = promotion.updatedAt || promotion.createdAt || "";
-  const parsedTime = new Date(timestamp.replace(" ", "T")).getTime();
-
-  return Number.isNaN(parsedTime) ? 0 : parsedTime;
-}
-
-function sortPromotions(promotions) {
-  return [...promotions].sort((firstPromotion, secondPromotion) => {
-    if (firstPromotion.isActive !== secondPromotion.isActive) {
-      return firstPromotion.isActive ? -1 : 1;
-    }
-
-    return getPromotionSortTime(secondPromotion) - getPromotionSortTime(firstPromotion);
-  });
 }
 
 function PromotionFormModal({
@@ -2275,6 +2080,7 @@ function PromotionManagementView({
     try {
       const response = await uploadQrCodesBulk({
         file: qrZipValidation.payload.file,
+        promotionCode: promoId,
       });
 
       setQrUploadResponse(response);
@@ -2283,7 +2089,7 @@ function PromotionManagementView({
       await Swal.fire({
         icon: "success",
         title: "QR Codes Uploaded",
-        text: response.message || `QR zip uploaded for promotion ${promoId}.`,
+        text: "QR codes uploaded successfully.",
         confirmButtonColor: "#22c55e",
       });
     } catch (uploadError) {
@@ -2693,11 +2499,6 @@ function PromotionManagementView({
                           value={qrUploadSummary.uploaded ?? 0}
                         />
                         <AssignmentMetricCard
-                          label="failed"
-                          tone="danger"
-                          value={qrUploadSummary.failed ?? 0}
-                        />
-                        <AssignmentMetricCard
                           label="last updated"
                           tone="purple"
                           value={formatUploadDate(qrUploadCompletedAt) || "--"}
@@ -2881,10 +2682,6 @@ function PromotionManagementView({
                   <div className="assignment-upload-title">
                     <div>
                       <h4>Add one assignment</h4>
-                      <p>
-                        Use this when one promoter was omitted or needs to be
-                        added later.
-                      </p>
                     </div>
                   </div>
                   <Link to="/promoters" className="brand-admin-secondary-link">
