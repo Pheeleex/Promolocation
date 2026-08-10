@@ -31,6 +31,7 @@ import {
   useCreatePromoterBrand,
   useImportBrandsCategory,
   useSystemBrands,
+  useUpdatePromoterBrand,
 } from "../hooks/use-promoters-brands";
 import { usePromoters } from "../hooks/use-promoters";
 import {
@@ -39,6 +40,7 @@ import {
 } from "../utils/imageUploadValidation";
 import {
   canManagePromotion,
+  findPromotionScheduleConflict,
   formatDate,
   getPromotionCode,
   getPromotionState,
@@ -59,8 +61,15 @@ const PROMOTION_UPLOAD_ACCEPT = ".csv,.xlsx,.xls";
 const PROMOTION_QR_ZIP_ACCEPT = ".zip";
 const PROMOTION_QR_IMAGE_EXTENSIONS = ["png", "jpg", "jpeg"];
 const PROMOTION_STATUS_OPTIONS = [
-  { label: "Draft", value: "draft" },
+  { label: "Scheduled", value: "scheduled" },
   { label: "Active", value: "active" },
+  { label: "Inactive", value: "inactive" },
+  { label: "Expired", value: "expired" },
+];
+const PROMOTION_FILTER_OPTIONS = [
+  { label: "All statuses", value: "all" },
+  { label: "Active", value: "active" },
+  { label: "Scheduled", value: "scheduled" },
   { label: "Inactive", value: "inactive" },
   { label: "Expired", value: "expired" },
 ];
@@ -76,6 +85,23 @@ function getFileBaseName(fileName) {
   return extension
     ? normalizedFileName.slice(0, -(extension.length + 1))
     : normalizedFileName;
+}
+
+function deriveCreatePromotionStatus(startDate, endDate) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const parsedStartDate = startDate ? new Date(`${startDate}T00:00:00`) : null;
+  const parsedEndDate = endDate ? new Date(`${endDate}T00:00:00`) : null;
+
+  if (parsedEndDate && parsedEndDate < today) {
+    return "expired";
+  }
+
+  if (parsedStartDate && parsedStartDate > today) {
+    return "scheduled";
+  }
+
+  return "active";
 }
 
 function escapeXml(value) {
@@ -369,6 +395,74 @@ function normalizeBrandName(value) {
     .replace(/[^a-z0-9]+/g, "");
 }
 
+function normalizeExactBrandName(value) {
+  return String(value || "")
+    .normalize("NFKC")
+    .replace(/[\u200B-\u200D\uFEFF]/g, "")
+    .trim()
+    .toLowerCase();
+}
+
+function getLevenshteinDistance(firstValue, secondValue) {
+  const first = String(firstValue || "");
+  const second = String(secondValue || "");
+  const distances = Array.from({ length: first.length + 1 }, (_, index) => [
+    index,
+  ]);
+
+  for (let secondIndex = 1; secondIndex <= second.length; secondIndex += 1) {
+    distances[0][secondIndex] = secondIndex;
+  }
+
+  for (let firstIndex = 1; firstIndex <= first.length; firstIndex += 1) {
+    for (let secondIndex = 1; secondIndex <= second.length; secondIndex += 1) {
+      const substitutionCost =
+        first[firstIndex - 1] === second[secondIndex - 1] ? 0 : 1;
+
+      distances[firstIndex][secondIndex] = Math.min(
+        distances[firstIndex - 1][secondIndex] + 1,
+        distances[firstIndex][secondIndex - 1] + 1,
+        distances[firstIndex - 1][secondIndex - 1] + substitutionCost,
+      );
+    }
+  }
+
+  return distances[first.length][second.length];
+}
+
+function getBrandSuggestion(brand, systemBrands = []) {
+  const normalizedLooseBrand = normalizeBrandName(brand);
+  const normalizedExactBrand = normalizeExactBrandName(brand);
+
+  const looseMatch = systemBrands.find(
+    (systemBrand) =>
+      normalizeBrandName(systemBrand.name) === normalizedLooseBrand,
+  );
+
+  if (looseMatch?.name) {
+    return looseMatch.name;
+  }
+
+  const closestMatch = systemBrands
+    .map((systemBrand) => ({
+      name: systemBrand.name,
+      distance: getLevenshteinDistance(
+        normalizedExactBrand,
+        normalizeExactBrandName(systemBrand.name),
+      ),
+    }))
+    .filter(({ name }) => name)
+    .sort((firstMatch, secondMatch) => firstMatch.distance - secondMatch.distance)[0];
+
+  if (!closestMatch) {
+    return "";
+  }
+
+  const maxDistance = normalizedExactBrand.length <= 8 ? 2 : 3;
+
+  return closestMatch.distance <= maxDistance ? closestMatch.name : "";
+}
+
 function normalizePromoterCode(value) {
   return String(value || "").trim().toLowerCase();
 }
@@ -394,9 +488,34 @@ function normalizeQrReference(value) {
   return (baseName || text).trim().toLowerCase();
 }
 
-function getBrandValidationErrors({ brand, brandNames, rowNumber }) {
-  if (!brandNames.has(normalizeBrandName(brand))) {
-    return [`Row ${rowNumber} uses "${brand}", but that brand does not exist.`];
+function getQrDisplayName(value, fallback = "QR code") {
+  const text = String(value || "").trim();
+
+  if (!text) {
+    return fallback;
+  }
+
+  const rawLeafName = getZipLeafName(text.split("?")[0]);
+  let leafName = rawLeafName;
+
+  try {
+    leafName = decodeURIComponent(rawLeafName);
+  } catch {
+    leafName = rawLeafName;
+  }
+
+  return leafName || fallback;
+}
+
+function getBrandValidationErrors({ brand, exactBrandNames, rowNumber, systemBrands }) {
+  if (!exactBrandNames.has(normalizeExactBrandName(brand))) {
+    const suggestion = getBrandSuggestion(brand, systemBrands);
+
+    return [
+      suggestion
+        ? `Row ${rowNumber} uses brand "${brand}", but that brand does not exist. Did you mean "${suggestion}"?`
+        : `Row ${rowNumber} uses brand "${brand}", but that brand does not exist.`,
+    ];
   }
 
   return [];
@@ -410,7 +529,9 @@ function validateWorkbookRows(
 ) {
   const expectedHeaders = ["promotion_code", "promoter_code", "brand", "qr code"];
   const headers = rows[0]?.map(normalizeWorkbookHeader) || [];
-  const brandNames = new Set(systemBrands.map((brand) => normalizeBrandName(brand.name)));
+  const exactBrandNames = new Set(
+    systemBrands.map((brand) => normalizeExactBrandName(brand.name)),
+  );
   const promoterCodes = new Set(
     promoters.flatMap((promoter) =>
       [promoter.promoterId, promoter.promoterCode].map(normalizePromoterCode),
@@ -472,12 +593,17 @@ function validateWorkbookRows(
       errors.push(`Row ${rowNumber} uses promoter_code "${promoterCode}", but that promoter does not exist.`);
     }
 
-    errors.push(...getBrandValidationErrors({ brand, brandNames, rowNumber }));
+    errors.push(...getBrandValidationErrors({
+      brand,
+      exactBrandNames,
+      rowNumber,
+      systemBrands,
+    }));
 
     const normalizedAssignmentKey = [
       String(promoId),
       normalizePromoterCode(promoterCode),
-      normalizeBrandName(brand),
+      normalizeExactBrandName(brand),
     ].join("|");
 
     if (workbookAssignmentReferences.has(normalizedAssignmentKey)) {
@@ -1065,6 +1191,68 @@ function mapBackendWorkbookErrors(error) {
   });
 }
 
+function validateSingleAssignmentFields({
+  brandName,
+  promoterCode,
+  qrFile,
+  qrFileRequired = false,
+  systemBrands = [],
+  promoters = [],
+}) {
+  const errors = [];
+
+  if (!promoterCode) {
+    errors.push("Promoter Code is required.");
+  } else if (promoterCode.length > 5) {
+    errors.push("Promoter Code cannot be more than 5 characters.");
+  }
+
+  if (
+    promoterCode &&
+    !promoters.some((promoter) =>
+      [promoter.promoterId, promoter.promoterCode]
+        .filter(Boolean)
+        .map(normalizePromoterCode)
+        .includes(normalizePromoterCode(promoterCode)),
+    )
+  ) {
+    errors.push(`Promoter ${promoterCode} does not exist.`);
+  }
+
+  if (!brandName) {
+    errors.push("Brand is required.");
+  } else if (
+    !systemBrands.some((brand) =>
+      normalizeExactBrandName(brand.name) === normalizeExactBrandName(brandName),
+    )
+  ) {
+    const suggestion = getBrandSuggestion(brandName, systemBrands);
+    errors.push(
+      suggestion
+        ? `Brand ${brandName} does not exist. Did you mean ${suggestion}?`
+        : `Brand ${brandName} does not exist.`,
+    );
+  }
+
+  if (qrFileRequired && !qrFile) {
+    errors.push("QR Image is required.");
+  }
+
+  if (qrFile) {
+    const imageError = validateImageUpload(qrFile, {
+      allowedExtensions: ["png", "jpg", "jpeg"],
+      allowedMimeTypes: ["image/png", "image/jpeg"],
+      fileLabel: "QR Image",
+    });
+
+    if (imageError) {
+      errors.push(imageError);
+    }
+  }
+
+  return errors;
+}
+
 function PromotionFormModal({
   currentStatus = "",
   form,
@@ -1114,7 +1302,7 @@ function PromotionFormModal({
               name: event.target.value,
             }))
           }
-          placeholder="Summer Activation"
+          placeholder="Enter a name for this promotion"
           required
         />
 
@@ -1208,6 +1396,7 @@ function PromotionFormModal({
 
 function PromotionsListView() {
   const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
   const [editingPromotion, setEditingPromotion] = useState(null);
   const [form, setForm] = useState(EMPTY_PROMOTION_FORM);
   const [formError, setFormError] = useState("");
@@ -1224,25 +1413,30 @@ function PromotionsListView() {
   const isSavingPromotion = isCreatingPromotion || isUpdatingPromotion;
 
   const sortedPromotions = useMemo(() => sortPromotions(promotions), [promotions]);
-  const activePromotion = useMemo(
-    () => promotions.find(isCurrentlyActivePromotion),
-    [promotions],
-  );
 
   const filteredPromotions = useMemo(() => {
     const normalizedSearchTerm = searchTerm.trim().toLowerCase();
 
-    if (!normalizedSearchTerm) {
-      return sortedPromotions;
-    }
+    return sortedPromotions.filter((promotion) => {
+      const promotionState = getPromotionState(promotion);
+      const normalizedStatus = promotionState.label.toLowerCase();
+      const matchesStatus =
+        statusFilter === "all" || normalizedStatus === statusFilter;
 
-    return sortedPromotions.filter((promotion) =>
-      [promotion.name, getPromotionState(promotion).label]
+      if (!matchesStatus) {
+        return false;
+      }
+
+      if (!normalizedSearchTerm) {
+        return true;
+      }
+
+      return [promotion.name, promotionState.label, getPromotionCode(promotion)]
         .join(" ")
         .toLowerCase()
-        .includes(normalizedSearchTerm),
-    );
-  }, [searchTerm, sortedPromotions]);
+        .includes(normalizedSearchTerm);
+    });
+  }, [searchTerm, sortedPromotions, statusFilter]);
   const openCreateModal = () => {
     setEditingPromotion({ mode: "create" });
     setForm(EMPTY_PROMOTION_FORM);
@@ -1274,36 +1468,53 @@ function PromotionsListView() {
       return;
     }
 
+    setFormError("");
+
     const name = form.name.trim();
     const validationErrors = [];
+    const isCreating = editingPromotion?.mode === "create";
+    const nextStatus = isCreating
+      ? deriveCreatePromotionStatus(form.startDate, form.endDate)
+      : form.status || editingPromotion.status;
+    const isActive = nextStatus === "active";
+    const isDeactivatingPromotion =
+      !isCreating && ["inactive", "expired"].includes(form.status);
 
     if (!name) {
       validationErrors.push("Promotion name is required.");
     }
 
-    if (!form.startDate) {
-      validationErrors.push("Start date is required.");
+    if (!isDeactivatingPromotion) {
+      if (!form.startDate) {
+        validationErrors.push("Start date is required.");
+      }
+
+      if (!form.endDate) {
+        validationErrors.push("End date is required.");
+      }
+
+      if (form.startDate && form.endDate && form.startDate > form.endDate) {
+        validationErrors.push("End date must be after the start date.");
+      }
     }
 
-    if (!form.endDate) {
-      validationErrors.push("End date is required.");
-    }
+    const targetPromotion = {
+      id: isCreating ? "__new_promotion__" : editingPromotion.id,
+      endDate: form.endDate,
+      isActive,
+      name,
+      startDate: form.startDate,
+      status: nextStatus,
+    };
+    const conflictingPromotion = findPromotionScheduleConflict(
+      targetPromotion,
+      promotions,
+    );
 
-    if (form.startDate && form.endDate && form.startDate > form.endDate) {
-      validationErrors.push("End date must be after the start date.");
-    }
-
-    const isCreating = editingPromotion?.mode === "create";
-    const nextStatus = isCreating ? "draft" : form.status || editingPromotion.status;
-    const isActive = nextStatus === "active";
-    const isActivatingDifferentPromotion =
-      isActive &&
-      activePromotion &&
-      (isCreating || !hasSamePromotionId(activePromotion.id, editingPromotion.id));
-
-    if (isActivatingDifferentPromotion) {
+    if (!isDeactivatingPromotion && conflictingPromotion) {
+      const conflictState = getPromotionState(conflictingPromotion);
       validationErrors.push(
-        `${activePromotion.name} is currently active. Make it inactive before activating another promotion.`,
+        `${conflictingPromotion.name} already reserves ${formatDate(conflictingPromotion.startDate)} to ${formatDate(conflictingPromotion.endDate)} as ${conflictState.label.toLowerCase()}. Adjust that promotion's dates or make it inactive before saving this promotion window.`,
       );
     }
 
@@ -1319,17 +1530,18 @@ function PromotionsListView() {
           description: form.description,
           startDate: form.startDate,
           endDate: form.endDate,
-          status: "draft",
-          isActive: false,
         });
       } else {
         const updatePayload = {
           id: editingPromotion.id,
           name,
           description: form.description,
-          startDate: form.startDate,
-          endDate: form.endDate,
         };
+
+        if (!isDeactivatingPromotion) {
+          updatePayload.startDate = form.startDate;
+          updatePayload.endDate = form.endDate;
+        }
 
         if (form.status) {
           updatePayload.status = form.status;
@@ -1369,25 +1581,37 @@ function PromotionsListView() {
               rows inside each promotion.
             </p>
           </div>
-          {!activePromotion ? (
-            <button
-              type="button"
-              className="brand-admin-primary-btn"
-              disabled={isSavingPromotion}
-              onClick={openCreateModal}
-            >
-              Create Promotion
-            </button>
-          ) : null}
+          <button
+            type="button"
+            className="brand-admin-primary-btn"
+            disabled={isSavingPromotion}
+            onClick={openCreateModal}
+          >
+            Create Promotion
+          </button>
         </div>
 
         <div className="brands-admin-toolbar">
-          <SearchBar
-            ariaLabel="Search promotions"
-            value={searchTerm}
-            onChange={setSearchTerm}
-            placeholder="Search promotions"
-          />
+          <div className="promotions-filter-controls">
+            <SearchBar
+              ariaLabel="Search promotions"
+              value={searchTerm}
+              onChange={setSearchTerm}
+              placeholder="Search promotions"
+            />
+            <SelectInput
+              id="promotionStatusFilter"
+              label="Status"
+              value={statusFilter}
+              onChange={(event) => setStatusFilter(event.target.value)}
+            >
+              {PROMOTION_FILTER_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </SelectInput>
+          </div>
           <span className="brands-admin-count">
             {filteredPromotions.length} of {promotions.length} promotions
           </span>
@@ -1497,6 +1721,7 @@ function PromotionsListView() {
 function UploadedPromoterBrandsTable({
   isError,
   isLoading,
+  onEditAssignment,
   promotion,
   promotionBrands,
   promotionBrandsError,
@@ -1561,10 +1786,15 @@ function UploadedPromoterBrandsTable({
   return (
     <section className="promotion-assignment-panel current-assignments-panel">
       <div className="promotion-assignment-panel-header">
-        <div>
-          <h3>Current Assignments</h3>
-          <span className="current-assignments-count">
-            {promotionBrands.length} assignments
+        <div className="current-assignments-title">
+          <div className="current-assignments-title-row">
+            <h3>Current Assignments</h3>
+            <span className="current-assignments-count">
+              {promotionBrands.length} assignments
+            </span>
+          </div>
+          <span className="current-assignments-promotion-name">
+            {promotion.name || "Selected promotion"}
           </span>
         </div>
         <SearchBar
@@ -1608,27 +1838,48 @@ function UploadedPromoterBrandsTable({
           {
             header: "QR Code",
             key: "qrCode",
-            render: (brand) =>
-              brand.qrPath ? (
+            render: (brand) => {
+              const qrName = getQrDisplayName(
+                brand.qrPath,
+                normalizeQrReference(brand.qrPath) || "QR code",
+              );
+
+              return brand.qrPath ? (
                 <div className="assignment-qr-cell">
-                  <span>{normalizeQrReference(brand.qrPath) || "--"}</span>
+                  <span>{qrName}</span>
                   <a
                     className="promotion-brand-qr-link"
                     href={brand.qrPath}
                     target="_blank"
                     rel="noreferrer"
+                    title={`Open ${qrName}`}
                   >
-                    View QR
+                    View {qrName}
                   </a>
                 </div>
               ) : (
                 "--"
-              ),
+              );
+            },
           },
           {
             header: "Created",
             key: "created",
             render: (brand) => formatDate(brand.createdAt?.slice(0, 10)),
+          },
+          {
+            header: "Actions",
+            key: "actions",
+            render: (brand) => (
+              <div className="brand-admin-actions">
+                <button
+                  type="button"
+                  onClick={() => onEditAssignment?.(brand)}
+                >
+                  Edit
+                </button>
+              </div>
+            ),
           },
         ]}
         dependencies={[promoId, searchTerm, sortedPromotionBrands.length]}
@@ -1667,6 +1918,7 @@ function PromotionManagementView({
   const qrZipInputRef = useRef(null);
   const uploadInputRef = useRef(null);
   const singleAssignmentQrInputRef = useRef(null);
+  const editAssignmentQrInputRef = useRef(null);
   const [qrZipFile, setQrZipFile] = useState(null);
   const [qrZipValidation, setQrZipValidation] = useState({
     error: "",
@@ -1687,6 +1939,13 @@ function PromotionManagementView({
     qrFile: null,
   });
   const [singleAssignmentErrors, setSingleAssignmentErrors] = useState([]);
+  const [editingAssignment, setEditingAssignment] = useState(null);
+  const [editAssignmentForm, setEditAssignmentForm] = useState({
+    promoterCode: "",
+    brand: "",
+    qrFile: null,
+  });
+  const [editAssignmentErrors, setEditAssignmentErrors] = useState([]);
   const { mutateAsync: uploadQrCodesBulk, isPending: isUploadingQrCodes } =
     useUploadPromotionQrCodesBulk();
   const {
@@ -1697,6 +1956,10 @@ function PromotionManagementView({
     mutateAsync: createPromoterBrand,
     isPending: isCreatingPromoterBrand,
   } = useCreatePromoterBrand();
+  const {
+    mutateAsync: updatePromoterBrand,
+    isPending: isUpdatingPromoterBrand,
+  } = useUpdatePromoterBrand();
   const {
     data: systemBrands = [],
     isLoading: isLoadingSystemBrands,
@@ -2000,6 +2263,11 @@ function PromotionManagementView({
       return;
     }
 
+    setQrZipValidation((currentValidation) => ({
+      ...currentValidation,
+      error: "",
+    }));
+
     if (!isQrZipValid) {
       setQrZipValidation((currentValidation) => ({
         ...currentValidation,
@@ -2023,7 +2291,21 @@ function PromotionManagementView({
         text: "QR codes uploaded successfully.",
         confirmButtonColor: "#22c55e",
       });
-      clearQrZipFile();
+      setQrZipFile(null);
+      setQrZipValidation((currentValidation) => ({
+        ...currentValidation,
+        error: "",
+        payload: currentValidation.payload
+          ? {
+              ...currentValidation.payload,
+              file: null,
+            }
+          : null,
+        status: "uploaded",
+      }));
+      if (qrZipInputRef.current) {
+        qrZipInputRef.current.value = "";
+      }
     } catch (uploadError) {
       await Swal.fire({
         icon: "error",
@@ -2038,6 +2320,11 @@ function PromotionManagementView({
     if (isUploadingAssignments) {
       return;
     }
+
+    setUploadValidation((currentValidation) => ({
+      ...currentValidation,
+      error: "",
+    }));
 
     if (!isUploadValid) {
       setUploadValidation((currentValidation) => ({
@@ -2098,51 +2385,18 @@ function PromotionManagementView({
       return;
     }
 
+    setSingleAssignmentErrors([]);
+
     const promoterCode = singleAssignmentForm.promoterCode.trim().toUpperCase();
     const brandName = singleAssignmentForm.brand.trim();
-    const errors = [];
-
-    if (!promoterCode) {
-      errors.push("Promoter Code is required.");
-    } else if (promoterCode.length > 5) {
-      errors.push("Promoter Code cannot be more than 5 characters.");
-    }
-
-    if (
-      promoterCode &&
-      !promoters.some((promoter) =>
-        [promoter.promoterId, promoter.promoterCode]
-          .filter(Boolean)
-          .map(normalizePromoterCode)
-          .includes(normalizePromoterCode(promoterCode)),
-      )
-    ) {
-      errors.push(`Promoter ${promoterCode} does not exist.`);
-    }
-
-    if (!brandName) {
-      errors.push("Brand is required.");
-    } else if (
-      !systemBrands.some((brand) =>
-        normalizeBrandName(brand.name) === normalizeBrandName(brandName),
-      )
-    ) {
-      errors.push(`Brand ${brandName} does not exist.`);
-    }
-
-    if (!singleAssignmentForm.qrFile) {
-      errors.push("QR Image is required.");
-    } else {
-      const imageError = validateImageUpload(singleAssignmentForm.qrFile, {
-        allowedExtensions: ["png", "jpg", "jpeg"],
-        allowedMimeTypes: ["image/png", "image/jpeg"],
-        fileLabel: "QR Image",
-      });
-
-      if (imageError) {
-        errors.push(imageError);
-      }
-    }
+    const errors = validateSingleAssignmentFields({
+      brandName,
+      promoterCode,
+      qrFile: singleAssignmentForm.qrFile,
+      qrFileRequired: true,
+      systemBrands,
+      promoters,
+    });
 
     setSingleAssignmentErrors(errors);
 
@@ -2189,6 +2443,86 @@ function PromotionManagementView({
     }
   };
 
+  const openAssignmentEditModal = (assignment) => {
+    setEditingAssignment(assignment);
+    setEditAssignmentForm({
+      promoterCode: String(assignment.promoterId || "").toUpperCase(),
+      brand: assignment.brandName || "",
+      qrFile: null,
+    });
+    setEditAssignmentErrors([]);
+    if (editAssignmentQrInputRef.current) {
+      editAssignmentQrInputRef.current.value = "";
+    }
+  };
+
+  const closeAssignmentEditModal = () => {
+    setEditingAssignment(null);
+    setEditAssignmentForm({
+      promoterCode: "",
+      brand: "",
+      qrFile: null,
+    });
+    setEditAssignmentErrors([]);
+    if (editAssignmentQrInputRef.current) {
+      editAssignmentQrInputRef.current.value = "";
+    }
+  };
+
+  const handleAssignmentEditSubmit = async (event) => {
+    event.preventDefault();
+
+    if (!editingAssignment || isUpdatingPromoterBrand) {
+      return;
+    }
+
+    setEditAssignmentErrors([]);
+
+    const promoterCode = editAssignmentForm.promoterCode.trim().toUpperCase();
+    const brandName = editAssignmentForm.brand.trim();
+    const errors = validateSingleAssignmentFields({
+      brandName,
+      promoterCode,
+      qrFile: editAssignmentForm.qrFile,
+      qrFileRequired: false,
+      systemBrands,
+      promoters,
+    });
+
+    setEditAssignmentErrors(errors);
+
+    if (errors.length) {
+      return;
+    }
+
+    try {
+      await updatePromoterBrand({
+        id: editingAssignment.id,
+        promoterId: promoterCode,
+        brandName,
+        promotionCode: promoId,
+        promoType: promotion.name,
+        promoFile: editAssignmentForm.qrFile,
+      });
+
+      void refetchPromotionBrands();
+      await Swal.fire({
+        icon: "success",
+        title: "Assignment Updated",
+        text: `${promoterCode} · ${brandName} has been updated.`,
+        confirmButtonColor: "#22c55e",
+      });
+      closeAssignmentEditModal();
+    } catch (updateError) {
+      await Swal.fire({
+        icon: "error",
+        title: "Unable to Update Assignment",
+        text: updateError?.message || "Something went wrong.",
+        confirmButtonColor: "#d33",
+      });
+    }
+  };
+
   const copyPromotionCode = async () => {
     try {
       await navigator.clipboard.writeText(promoId);
@@ -2208,8 +2542,28 @@ function PromotionManagementView({
     }
   };
 
+  const copyTextToClipboard = async (text, successTitle = "Copied") => {
+    try {
+      await navigator.clipboard.writeText(text);
+      await Swal.fire({
+        icon: "success",
+        title: successTitle,
+        showConfirmButton: false,
+        timer: 1100,
+      });
+    } catch {
+      await Swal.fire({
+        icon: "error",
+        title: "Unable to Copy",
+        text: "Copy it manually.",
+        confirmButtonColor: "#d33",
+      });
+    }
+  };
+
   const qrValidationSummary = getQrValidationSummary(qrZipValidation.error);
   const workbookValidationSummary = getWorkbookValidationSummary(uploadValidation.error);
+  const qrReferenceList = qrZipValidation.payload?.qrReferences || [];
   return (
     <AppLayout activeNav={isActivePromotionRoute ? "active-promotion" : "promotions"}>
       <div className="main-card promotions-card promotion-management-card">
@@ -2220,10 +2574,23 @@ function PromotionManagementView({
                 <Link to="/promotions" className="promotion-back-link">
                   Back to Promotions
                 </Link>
-                <h3>Promoter &amp; Brand Assignment</h3>
+                {isActivePromotionRoute ? (
+                  <span className="assignment-hero-eyebrow">Active Promotion</span>
+                ) : null}
+                <h3>
+                  {isActivePromotionRoute
+                    ? promotion.name
+                    : "Promoter & Brand Assignment"}
+                </h3>
                 <p>
-                  Upload QR codes and manage promoter-brand assignments for this
-                  promotion.
+                  {isActivePromotionRoute ? (
+                    <>
+                      Promoter &amp; Brand Assignment · Upload QR codes and manage
+                      promoter-brand assignments for this promotion.
+                    </>
+                  ) : (
+                    "Upload QR codes and manage promoter-brand assignments for this promotion."
+                  )}
                 </p>
               </div>
             </div>
@@ -2303,7 +2670,7 @@ function PromotionManagementView({
           <div className="assignment-workspace-card">
             {activeAssignmentAction === "qr" ? (
               <form
-                className="assignment-action-panel"
+                className="assignment-action-panel assignment-action-panel--qr"
                 onSubmit={handlePreparedUpload}
                 noValidate
               >
@@ -2408,6 +2775,59 @@ function PromotionManagementView({
                     </button>
                   </div>
                 </div>
+
+                <aside className="qr-reference-panel" aria-live="polite">
+                  <div className="qr-reference-panel__header">
+                    <div>
+                      <h4>QR filenames</h4>
+                      <p>
+                        Copy these names into the workbook <code>qr code</code>{" "}
+                        column.
+                      </p>
+                    </div>
+                    {qrReferenceList.length ? (
+                      <button
+                        type="button"
+                        className="brand-admin-secondary-btn qr-reference-copy-all"
+                        onClick={() =>
+                          void copyTextToClipboard(
+                            qrReferenceList.join("\n"),
+                            "QR Filenames Copied",
+                          )
+                        }
+                      >
+                        Copy All
+                      </button>
+                    ) : null}
+                  </div>
+
+                  {qrReferenceList.length ? (
+                    <div className="qr-reference-list">
+                      {qrReferenceList.map((reference) => (
+                        <div className="qr-reference-item" key={reference}>
+                          <code>{reference}</code>
+                          <button
+                            type="button"
+                            className="qr-reference-copy-btn"
+                            aria-label={`Copy ${reference}`}
+                            onClick={() =>
+                              void copyTextToClipboard(reference, "QR Filename Copied")
+                            }
+                          >
+                            <CopyIcon />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="qr-reference-empty">
+                      <strong>No QR filenames detected yet.</strong>
+                      <span>
+                        Add a valid ZIP file to preview the image filenames here.
+                      </span>
+                    </div>
+                  )}
+                </aside>
 
               </form>
             ) : null}
@@ -2640,11 +3060,118 @@ function PromotionManagementView({
         <UploadedPromoterBrandsTable
           isError={isPromotionBrandsError}
           isLoading={isLoadingPromotionBrands}
+          onEditAssignment={openAssignmentEditModal}
           promotion={promotion}
           promotionBrands={promotionBrands}
           promotionBrandsError={promotionBrandsError}
           promoId={promoId}
         />
+
+        <Modal
+          isOpen={Boolean(editingAssignment)}
+          onClose={closeAssignmentEditModal}
+          contentClassName="modal-content promotion-modal"
+        >
+          <div className="modal-header promoter-edit-header">
+            <div>
+              <p className="modal-eyebrow">Assignment</p>
+              <h2>Edit Assignment</h2>
+            </div>
+            <button
+              type="button"
+              className="close-modal"
+              aria-label="Close assignment modal"
+              onClick={closeAssignmentEditModal}
+              disabled={isUpdatingPromoterBrand}
+            >
+              &times;
+            </button>
+          </div>
+
+          <form
+            className="promotion-form"
+            onSubmit={handleAssignmentEditSubmit}
+            noValidate
+          >
+            <div className="single-assignment-grid">
+              <TextInput
+                id="editAssignmentPromoterCode"
+                label="Promoter Code"
+                value={editAssignmentForm.promoterCode}
+                onChange={(event) =>
+                  setEditAssignmentForm((currentForm) => ({
+                    ...currentForm,
+                    promoterCode: event.target.value.toUpperCase(),
+                  }))
+                }
+                placeholder="Enter promoter code"
+                maxLength={5}
+                required
+              />
+
+              <SelectInput
+                id="editAssignmentBrand"
+                label="Brand"
+                value={editAssignmentForm.brand}
+                onChange={(event) =>
+                  setEditAssignmentForm((currentForm) => ({
+                    ...currentForm,
+                    brand: event.target.value,
+                  }))
+                }
+                required
+              >
+                <option value="">Select brand</option>
+                {systemBrands.map((brand) => (
+                  <option key={brand.id || brand.name} value={brand.name}>
+                    {brand.name}
+                  </option>
+                ))}
+              </SelectInput>
+            </div>
+
+            <FileInput
+              ref={editAssignmentQrInputRef}
+              id="editAssignmentQrFile"
+              label="Replace QR Image"
+              accept=".jpg,.jpeg,.png"
+              onChange={(event) =>
+                setEditAssignmentForm((currentForm) => ({
+                  ...currentForm,
+                  qrFile: event.target.files?.[0] || null,
+                }))
+              }
+              hint={
+                editAssignmentForm.qrFile
+                  ? `${editAssignmentForm.qrFile.name} · ${formatFileSize(editAssignmentForm.qrFile.size)}`
+                  : "Optional. PNG or JPG, max 3MB"
+              }
+            />
+
+            <FormErrorSummary
+              errors={editAssignmentErrors}
+              title="Assignment issues found:"
+            />
+
+            <div className="brand-admin-form-actions">
+              <button
+                type="button"
+                className="brand-admin-secondary-btn"
+                onClick={closeAssignmentEditModal}
+                disabled={isUpdatingPromoterBrand}
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="brand-admin-primary-btn"
+                disabled={isUpdatingPromoterBrand}
+              >
+                {isUpdatingPromoterBrand ? "Saving..." : "Save Assignment"}
+              </button>
+            </div>
+          </form>
+        </Modal>
       </div>
     </AppLayout>
   );

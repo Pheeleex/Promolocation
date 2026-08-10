@@ -268,7 +268,12 @@ export async function updatePromoterBrand(
         {
           id: payload.id,
           function_type: "update",
+          promoter_id: payload.promoterId,
           ...(brandName ? { brand: brandName } : {}),
+          ...(payload.promotionCode !== undefined
+            ? { promotion_code: payload.promotionCode }
+            : {}),
+          ...(payload.promoType ? { promo_type: payload.promoType } : {}),
         },
       ),
     );
@@ -283,9 +288,18 @@ export async function updatePromoterBrand(
   const formData = new FormData();
   formData.set("id", String(payload.id));
   formData.set("function_type", "update");
+  formData.set("promoter_id", payload.promoterId);
 
   if (brandName) {
     formData.set("brand", brandName);
+  }
+
+  if (payload.promotionCode !== undefined) {
+    formData.set("promotion_code", payload.promotionCode);
+  }
+
+  if (payload.promoType) {
+    formData.set("promo_type", payload.promoType);
   }
 
   formData.set("promo_URL", payload.promoFile);

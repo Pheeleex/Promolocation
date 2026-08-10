@@ -37,6 +37,17 @@ function formatDate(value) {
   }).format(date);
 }
 
+function getQrDisplayName(record) {
+  const rawName = record.fileName || record.imageUrl || record.code || "QR code";
+  const leafName = String(rawName).split("?")[0].split("/").filter(Boolean).pop();
+
+  try {
+    return decodeURIComponent(leafName || rawName);
+  } catch {
+    return leafName || rawName;
+  }
+}
+
 function getGroupValue(record, groupBy) {
   if (groupBy === "dateAdded") {
     return formatDate(record.createdAt);
@@ -58,8 +69,8 @@ function getPromotionStatusClass(record) {
     return "is-active";
   }
 
-  if (record.promotionStatus === "draft") {
-    return "is-draft";
+  if (record.promotionStatus === "scheduled") {
+    return "is-scheduled";
   }
 
   if (record.promotionStatus === "expired") {
@@ -330,19 +341,23 @@ export default function QrCodesPage() {
             {
               header: "File",
               key: "file",
-              render: (record) =>
-                record.imageUrl ? (
+              render: (record) => {
+                const qrName = getQrDisplayName(record);
+
+                return record.imageUrl ? (
                   <a
                     className="promotion-brand-qr-link"
                     href={record.imageUrl}
                     target="_blank"
                     rel="noreferrer"
+                    title={`Open ${qrName}`}
                   >
-                    View QR
+                    View {qrName}
                   </a>
                 ) : (
                   "--"
-                ),
+                );
+              },
             },
             ...(groupBy === "dateAdded"
               ? []

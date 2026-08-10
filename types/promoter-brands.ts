@@ -133,6 +133,8 @@ export type UpdatePromoterBrandPayload = {
   id: ApiId;
   promoterId: string;
   brandName?: string;
+  promotionCode?: string;
+  promoType?: string;
   promoFile?: File | null;
 };
 

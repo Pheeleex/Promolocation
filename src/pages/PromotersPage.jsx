@@ -54,6 +54,38 @@ function BrandIcon() {
   );
 }
 
+function ExternalLinkIcon() {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+      <polyline points="15 3 21 3 21 9" />
+      <line x1="10" y1="14" x2="21" y2="3" />
+    </svg>
+  );
+}
+
+function getFileNameFromUrl(url) {
+  if (!url) return "";
+  try {
+    const parsedUrl = new URL(url);
+    const pathname = parsedUrl.pathname;
+    return pathname.substring(pathname.lastIndexOf("/") + 1);
+  } catch (e) {
+    // Fallback if url is a relative path or partial string
+    const segments = url.split("/");
+    return segments[segments.length - 1] || url;
+  }
+}
+
 function getPromoterSortValue(promoter, sortKey) {
   if (sortKey === "createdOn") {
     return promoter.createdOnTime || 0;
@@ -479,28 +511,34 @@ export default function PromotersPage() {
               <p className="edit-promoter-brand-empty">Loading brands...</p>
             ) : editingPromoterBrands.length ? (
               <div className="edit-promoter-brand-list">
-                {editingPromoterBrands.map((brand) => (
-                  <div className="edit-promoter-brand-row is-collapsed" key={brand.id}>
-                    <div className="brand-collapsed-copy">
-                      <span className="brand-name">{brand.name || "Untitled brand"}</span>
-                      <span className="brand-qr-status">
-                        {brand.promoUrl ? "QR code attached" : "No QR code"}
-                      </span>
+                {editingPromoterBrands.map((brand) => {
+                  const fileName = getFileNameFromUrl(brand.promoUrl);
+
+                  return (
+                    <div className="edit-promoter-brand-row is-collapsed" key={brand.id}>
+                      <div className="brand-collapsed-copy">
+                        <span className="brand-name">{brand.name || "Untitled brand"}</span>
+                        <span className="brand-qr-status">
+                          {brand.promoUrl ? "QR code attached" : "No QR code"}
+                        </span>
+                      </div>
+                      <div className="brand-row-actions">
+                        {brand.promoUrl ? (
+                          <a
+                            className="brand-qr-link"
+                            href={brand.promoUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            title={fileName}
+                          >
+                            <span className="brand-qr-filename">{fileName}</span>
+                            <ExternalLinkIcon />
+                          </a>
+                        ) : null}
+                      </div>
                     </div>
-                    <div className="brand-row-actions">
-                      {brand.promoUrl ? (
-                        <a
-                          className="brand-qr-link"
-                          href={brand.promoUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                        >
-                          View QR
-                        </a>
-                      ) : null}
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             ) : (
               <p className="edit-promoter-brand-empty">

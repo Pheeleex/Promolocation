@@ -120,6 +120,12 @@ export function useUpdatePromoterBrand() {
       queryClient.invalidateQueries({
         queryKey: promoterBrandKeys.promoter(variables.promoterId),
       });
+      if (variables.promotionCode) {
+        queryClient.invalidateQueries({
+          queryKey: ["promotions", "brands", variables.promotionCode],
+        });
+      }
+      queryClient.invalidateQueries({ queryKey: ["promotions", "qr-codes"] });
       queryClient.invalidateQueries({ queryKey: ["promoters"] });
     },
   });

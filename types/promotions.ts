@@ -1,6 +1,6 @@
 import type { ApiId } from "./promoter-brands";
 
-export type PromotionStatus = "draft" | "active" | "inactive" | "expired";
+export type PromotionStatus = "active" | "scheduled" | "inactive" | "expired";
 
 export type RawPromotion = {
   id: ApiId;
@@ -70,7 +70,7 @@ export type CreatePromotionPayload = {
   description?: string;
   startDate: string;
   endDate: string;
-  status: PromotionStatus;
+  status?: PromotionStatus;
   isActive?: boolean;
 };
 

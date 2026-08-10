@@ -44,12 +44,16 @@ function normalizeIsActive(isActive: RawPromotion["is_active"], status?: string 
 
 function normalizePromotionStatus(status?: string | null): PromotionStatus {
   if (
-    status === "draft" ||
     status === "active" ||
+    status === "scheduled" ||
     status === "inactive" ||
     status === "expired"
   ) {
     return status;
+  }
+
+  if (status === "draft") {
+    return "inactive";
   }
 
   return "inactive";

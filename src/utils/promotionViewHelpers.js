@@ -27,8 +27,8 @@ export function getPromotionState(promotion) {
     : null;
 
   if (!promotion.isActive) {
-    if (promotion.status === "draft") {
-      return { label: "Draft", className: "is-draft" };
+    if (promotion.status === "scheduled") {
+      return { label: "Scheduled", className: "is-scheduled" };
     }
 
     if (promotion.status === "expired") {
@@ -61,6 +61,70 @@ export function isCurrentlyActivePromotion(promotion) {
 
 export function getPromotionCode(promotion) {
   return promotion?.promotionCode || String(promotion?.id || "");
+}
+
+function parsePromotionDate(value) {
+  if (!value) {
+    return null;
+  }
+
+  const date = new Date(`${value}T00:00:00`);
+
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function getPromotionWindow(promotion) {
+  return {
+    endDate: parsePromotionDate(promotion?.endDate),
+    startDate: parsePromotionDate(promotion?.startDate),
+  };
+}
+
+export function promotionWindowsOverlap(firstPromotion, secondPromotion) {
+  const firstWindow = getPromotionWindow(firstPromotion);
+  const secondWindow = getPromotionWindow(secondPromotion);
+
+  if (
+    !firstWindow.startDate ||
+    !firstWindow.endDate ||
+    !secondWindow.startDate ||
+    !secondWindow.endDate
+  ) {
+    return false;
+  }
+
+  return (
+    firstWindow.startDate <= secondWindow.endDate &&
+    firstWindow.endDate >= secondWindow.startDate
+  );
+}
+
+export function canPromotionReserveActiveWindow(promotion) {
+  const status = String(promotion?.status || "").toLowerCase();
+
+  return status === "active" || status === "scheduled";
+}
+
+export function findPromotionScheduleConflict(
+  targetPromotion,
+  promotions = [],
+) {
+  if (!canPromotionReserveActiveWindow(targetPromotion)) {
+    return null;
+  }
+
+  return (
+    promotions.find((promotion) => {
+      if (hasSamePromotionId(promotion.id, targetPromotion.id)) {
+        return false;
+      }
+
+      return (
+        canPromotionReserveActiveWindow(promotion) &&
+        promotionWindowsOverlap(targetPromotion, promotion)
+      );
+    }) || null
+  );
 }
 
 export function hasSamePromotionId(firstId, secondId) {
