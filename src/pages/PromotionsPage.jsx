@@ -1751,12 +1751,14 @@ function UploadedPromoterBrandsTable({
           return brandCompare;
         }
 
-        const createdCompare = String(firstBrand.createdAt || "").localeCompare(
-          String(secondBrand.createdAt || ""),
+        const lastModifiedCompare = String(
+          firstBrand.lastModified || firstBrand.createdAt || "",
+        ).localeCompare(
+          String(secondBrand.lastModified || secondBrand.createdAt || ""),
         );
 
-        if (createdCompare !== 0) {
-          return createdCompare;
+        if (lastModifiedCompare !== 0) {
+          return lastModifiedCompare;
         }
 
         return String(firstBrand.id || "").localeCompare(String(secondBrand.id || ""));
@@ -1863,9 +1865,10 @@ function UploadedPromoterBrandsTable({
             },
           },
           {
-            header: "Created",
-            key: "created",
-            render: (brand) => formatDate(brand.createdAt?.slice(0, 10)),
+            header: "Last Modified",
+            key: "lastModified",
+            render: (brand) =>
+              formatDate((brand.lastModified || brand.createdAt)?.slice(0, 10)),
           },
           {
             header: "Actions",

@@ -42,6 +42,7 @@ export type PromotionAssignment = {
   promotionName?: string | null;
   promotionActive?: boolean;
   createdAt?: string;
+  lastModified?: string;
 };
 
 export type ListPromotionsResponse = {
@@ -109,6 +110,7 @@ export type RawPromotionBrand = {
   promotion_name?: string | null;
   promotion_active?: number | string | boolean | null;
   created_at?: string | null;
+  last_modified?: string | null;
 };
 
 export type GetPromotionBrandsPayload = {

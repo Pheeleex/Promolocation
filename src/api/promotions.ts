@@ -134,6 +134,7 @@ function mapPromotionBrand(brand: RawPromotionBrand): PromotionAssignment {
     promotionName: brand.promotion_name || null,
     promotionActive: normalizePromotionActive(brand.promotion_active),
     createdAt: brand.created_at || "",
+    lastModified: brand.last_modified || brand.created_at || "",
   };
 }
 
