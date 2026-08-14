@@ -1191,6 +1191,51 @@ function mapBackendWorkbookErrors(error) {
   });
 }
 
+function mapBackendQrUploadErrors(error) {
+  const details = error?.details || {};
+  const validationResults = Array.isArray(details.validation_results)
+    ? details.validation_results
+    : Array.isArray(details.results)
+      ? details.results
+      : [];
+  const summary = details.summary || {};
+  const issues = [];
+
+  if (details.message) {
+    issues.push(details.message);
+  } else if (error?.message) {
+    issues.push(error.message);
+  }
+
+  if (
+    summary.total !== undefined ||
+    summary.ready_for_upload !== undefined ||
+    summary.failed !== undefined ||
+    summary.duplicates !== undefined
+  ) {
+    issues.push(
+      `Summary: ${summary.ready_for_upload ?? 0} ready to upload, ${summary.duplicates ?? 0} duplicates, ${summary.failed ?? 0} failed out of ${summary.total ?? validationResults.length}.`,
+    );
+  }
+
+  validationResults.forEach((result, index) => {
+    const filename = result?.filename || `File ${index + 1}`;
+    const status = result?.status ? ` ${result.status}` : "";
+    const reason = result?.reason || result?.warning || result?.message;
+    const renamedName = result?.renamed_filename
+      ? ` (${result.renamed_filename})`
+      : "";
+
+    issues.push(
+      reason
+        ? `${filename}${renamedName}:${status} - ${reason}`
+        : `${filename}${renamedName}:${status || " validation issue"}`,
+    );
+  });
+
+  return issues.filter(Boolean);
+}
+
 function validateSingleAssignmentFields({
   brandName,
   promoterCode,
@@ -2310,10 +2355,27 @@ function PromotionManagementView({
         qrZipInputRef.current.value = "";
       }
     } catch (uploadError) {
+      const backendQrErrors = mapBackendQrUploadErrors(uploadError);
+
+      if (backendQrErrors.length) {
+        setQrZipValidation((currentValidation) => ({
+          ...currentValidation,
+          error: backendQrErrors,
+          payload: currentValidation.payload,
+          status: "invalid",
+        }));
+      }
+
       await Swal.fire({
         icon: "error",
-        title: "Unable to Upload QR Codes",
-        text: uploadError?.message || "Something went wrong.",
+        title: backendQrErrors.length
+          ? "QR ZIP Validation Failed"
+          : "Unable to Upload QR Codes",
+        text: backendQrErrors.length
+          ? `${backendQrErrors.length} QR upload issue${
+              backendQrErrors.length === 1 ? "" : "s"
+            } found. Review the ZIP issues on this page.`
+          : uploadError?.message || "Something went wrong.",
         confirmButtonColor: "#d33",
       });
     }
@@ -2743,7 +2805,7 @@ function PromotionManagementView({
                         <span>{qrValidationSummary.unreadableCount} unreadable QR codes</span>
                       ) : null}
                       {qrValidationSummary.duplicateCount ? (
-                        <span>{qrValidationSummary.duplicateCount} duplicate references</span>
+                        <span>{qrValidationSummary.duplicateCount} duplicates found</span>
                       ) : null}
                       <details className="assignment-issue-details">
                         <summary>View issues</summary>
