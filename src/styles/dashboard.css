@@ -2124,6 +2124,59 @@
   padding: 18px 20px 20px;
 }
 
+.assignment-current-qr {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  border: 1px solid #d8e6fb;
+  border-radius: 12px;
+  background: #f8fbff;
+  padding: 12px;
+}
+
+.assignment-current-qr__preview {
+  display: grid;
+  width: 64px;
+  height: 64px;
+  flex: 0 0 64px;
+  place-items: center;
+  overflow: hidden;
+  border: 1px solid #c5d9f7;
+  border-radius: 10px;
+  background: #ffffff;
+}
+
+.assignment-current-qr__preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.assignment-current-qr__copy {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.assignment-current-qr__copy > span {
+  color: #53709f;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.assignment-current-qr__copy strong {
+  color: #0e2b63;
+  font-size: 14px;
+  font-weight: 900;
+  overflow-wrap: anywhere;
+}
+
+.assignment-current-qr__copy .promotion-brand-qr-link {
+  width: fit-content;
+}
+
 .promotion-date-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -3796,7 +3849,7 @@
 .current-assignments-panel h3 {
   margin: 0;
   color: #0f172a;
-  font-size: 17px;
+  font-size: 14px;
 }
 
 .current-assignments-count {
@@ -3811,7 +3864,7 @@
 .current-assignments-promotion-name {
   display: block;
   color: #53709f;
-  font-size: 13px;
+  font-size: 18px;
   font-weight: 750;
   overflow-wrap: anywhere;
 }

@@ -2350,7 +2350,7 @@ function PromotionManagementView({
       await Swal.fire({
         icon: response.summary?.failed > 0 ? "warning" : "success",
         title: "Workbook Import Complete",
-        text: response.message || `Workbook uploaded for promotion ${promoId}.`,
+        text:  `Workbook uploaded for promotion ${promoId}.`,
         confirmButtonColor: response.summary?.failed > 0 ? "#f59e0b" : "#22c55e",
       });
       clearUploadFile();
@@ -3132,6 +3132,37 @@ function PromotionManagementView({
                 ))}
               </SelectInput>
             </div>
+
+            {editingAssignment?.qrPath ? (
+              <div className="assignment-current-qr">
+                <span className="assignment-current-qr__preview" aria-hidden="true">
+                  <img
+                    src={editingAssignment.qrPath}
+                    alt=""
+                    onError={(event) => {
+                      event.currentTarget.style.display = "none";
+                    }}
+                  />
+                </span>
+                <div className="assignment-current-qr__copy">
+                  <span>Current QR Code</span>
+                  <strong>
+                    {getQrDisplayName(
+                      editingAssignment.qrPath,
+                      normalizeQrReference(editingAssignment.qrPath) || "QR code",
+                    )}
+                  </strong>
+                  <a
+                    className="promotion-brand-qr-link"
+                    href={editingAssignment.qrPath}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Open current QR
+                  </a>
+                </div>
+              </div>
+            ) : null}
 
             <FileInput
               ref={editAssignmentQrInputRef}
