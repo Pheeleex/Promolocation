@@ -29,6 +29,7 @@ import {
 } from "../hooks/use-promotions";
 import {
   useCreatePromoterBrand,
+  useDeletePromoterBrand,
   useImportBrandsCategory,
   useSystemBrands,
   useUpdatePromoterBrand,
@@ -1764,8 +1765,10 @@ function PromotionsListView() {
 }
 
 function UploadedPromoterBrandsTable({
+  deletingAssignmentId,
   isError,
   isLoading,
+  onDeleteAssignment,
   onEditAssignment,
   promotion,
   promotionBrands,
@@ -1923,8 +1926,17 @@ function UploadedPromoterBrandsTable({
                 <button
                   type="button"
                   onClick={() => onEditAssignment?.(brand)}
+                  disabled={deletingAssignmentId === brand.id}
                 >
                   Edit
+                </button>
+                <button
+                  type="button"
+                  className="is-danger"
+                  onClick={() => onDeleteAssignment?.(brand)}
+                  disabled={deletingAssignmentId === brand.id}
+                >
+                  {deletingAssignmentId === brand.id ? "Deleting..." : "Delete"}
                 </button>
               </div>
             ),
@@ -1994,6 +2006,7 @@ function PromotionManagementView({
     qrFile: null,
   });
   const [editAssignmentErrors, setEditAssignmentErrors] = useState([]);
+  const [deletingAssignmentId, setDeletingAssignmentId] = useState(null);
   const { mutateAsync: uploadQrCodesBulk, isPending: isUploadingQrCodes } =
     useUploadPromotionQrCodesBulk();
   const {
@@ -2008,6 +2021,10 @@ function PromotionManagementView({
     mutateAsync: updatePromoterBrand,
     isPending: isUpdatingPromoterBrand,
   } = useUpdatePromoterBrand();
+  const {
+    mutateAsync: deletePromoterBrand,
+    isPending: isDeletingPromoterBrand,
+  } = useDeletePromoterBrand();
   const {
     data: systemBrands = [],
     isLoading: isLoadingSystemBrands,
@@ -2588,6 +2605,53 @@ function PromotionManagementView({
     }
   };
 
+  const handleAssignmentDelete = async (assignment) => {
+    if (!assignment || isDeletingPromoterBrand) {
+      return;
+    }
+
+    const result = await Swal.fire({
+      icon: "warning",
+      title: "Delete Assignment?",
+      text: `This will remove ${assignment.promoterId || "this promoter"} · ${assignment.brandName || "this brand"} from ${promotion.name}.`,
+      showCancelButton: true,
+      confirmButtonText: "Delete Assignment",
+      cancelButtonText: "Cancel",
+      confirmButtonColor: "#d33",
+    });
+
+    if (!result.isConfirmed) {
+      return;
+    }
+
+    setDeletingAssignmentId(assignment.id);
+
+    try {
+      await deletePromoterBrand({
+        id: assignment.id,
+        promoterId: assignment.promoterId || "",
+        promotionCode: promoId,
+      });
+
+      void refetchPromotionBrands();
+      await Swal.fire({
+        icon: "success",
+        title: "Assignment Deleted",
+        text: "The promoter-brand assignment has been removed.",
+        confirmButtonColor: "#22c55e",
+      });
+    } catch (deleteError) {
+      await Swal.fire({
+        icon: "error",
+        title: "Unable to Delete Assignment",
+        text: deleteError?.message || "Something went wrong.",
+        confirmButtonColor: "#d33",
+      });
+    } finally {
+      setDeletingAssignmentId(null);
+    }
+  };
+
   const copyPromotionCode = async () => {
     try {
       await navigator.clipboard.writeText(promoId);
@@ -3123,8 +3187,10 @@ function PromotionManagementView({
         </section>
 
         <UploadedPromoterBrandsTable
+          deletingAssignmentId={deletingAssignmentId}
           isError={isPromotionBrandsError}
           isLoading={isLoadingPromotionBrands}
+          onDeleteAssignment={handleAssignmentDelete}
           onEditAssignment={openAssignmentEditModal}
           promotion={promotion}
           promotionBrands={promotionBrands}
@@ -3171,6 +3237,7 @@ function PromotionManagementView({
                 }
                 placeholder="Enter promoter code"
                 maxLength={5}
+                disabled
                 required
               />
 

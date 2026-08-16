@@ -141,6 +141,7 @@ export type UpdatePromoterBrandPayload = {
 export type DeletePromoterBrandPayload = {
   id: ApiId;
   promoterId: string;
+  promotionCode?: string;
 };
 
 export type GetPromoterBrandsPayload = {
