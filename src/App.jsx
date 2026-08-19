@@ -33,7 +33,7 @@ function AppRoutes() {
       <Route
         path="/promoters"
         element={
-          <ProtectedRoute disallowSpecialAdmin>
+          <ProtectedRoute>
             <PromotersPage />
           </ProtectedRoute>
         }
@@ -41,7 +41,7 @@ function AppRoutes() {
       <Route
         path="/promoters/new"
         element={
-          <ProtectedRoute disallowSpecialAdmin>
+          <ProtectedRoute>
             <AddPromoterPage />
           </ProtectedRoute>
         }
@@ -49,7 +49,7 @@ function AppRoutes() {
       <Route
         path="/brands"
         element={
-          <ProtectedRoute disallowSpecialAdmin>
+          <ProtectedRoute>
             <BrandsPage />
           </ProtectedRoute>
         }
@@ -57,7 +57,7 @@ function AppRoutes() {
       <Route
         path="/promotions"
         element={
-          <ProtectedRoute disallowSpecialAdmin>
+          <ProtectedRoute>
             <PromotionsPage />
           </ProtectedRoute>
         }
@@ -65,7 +65,7 @@ function AppRoutes() {
       <Route
         path="/promotions/active"
         element={
-          <ProtectedRoute disallowSpecialAdmin>
+          <ProtectedRoute>
             <PromotionsPage activePromotionOnly />
           </ProtectedRoute>
         }
@@ -73,7 +73,7 @@ function AppRoutes() {
       <Route
         path="/promotions/:promotionId"
         element={
-          <ProtectedRoute disallowSpecialAdmin>
+          <ProtectedRoute>
             <PromotionsPage />
           </ProtectedRoute>
         }
@@ -81,7 +81,7 @@ function AppRoutes() {
       <Route
         path="/qr-codes"
         element={
-          <ProtectedRoute disallowSpecialAdmin>
+          <ProtectedRoute>
             <QrCodesPage />
           </ProtectedRoute>
         }

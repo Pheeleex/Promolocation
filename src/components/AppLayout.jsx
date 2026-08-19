@@ -2,7 +2,7 @@ import React from "react";
 import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { isRegularAdminUser, isSpecialAdminUser } from "../utils/authAccess";
+import { isAdminUser, isSpecialAdminUser } from "../utils/authAccess";
 import { assetPath } from "../utils/assetPath";
 
 const navItems = [
@@ -144,7 +144,7 @@ export default function AppLayout({
   const { authUser, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const canManagePromoters = isRegularAdminUser(authUser);
+  const canManagePromoters = isAdminUser(authUser);
   const canReportIncident = isSpecialAdminUser(authUser);
   const visibleNavItems = canManagePromoters
     ? navItems

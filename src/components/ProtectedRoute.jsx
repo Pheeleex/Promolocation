@@ -10,7 +10,6 @@ import {
 export default function ProtectedRoute({
   children,
   requireSpecialAdmin = false,
-  disallowSpecialAdmin = false,
 }) {
   const { authUser } = useAuth();
   const location = useLocation();
@@ -21,10 +20,6 @@ export default function ProtectedRoute({
   }
 
   if (requireSpecialAdmin && !isSpecialAdminUser(authUser)) {
-    return <Navigate to={fallbackPath} replace />;
-  }
-
-  if (disallowSpecialAdmin && isSpecialAdminUser(authUser)) {
     return <Navigate to={fallbackPath} replace />;
   }
 

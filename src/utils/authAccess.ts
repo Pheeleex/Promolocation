@@ -33,10 +33,6 @@ export function isRegularAdminUser(user: AuthLikeUser) {
 }
 
 export function getDefaultAuthorizedPath(user: AuthLikeUser) {
-  if (isSpecialAdminUser(user)) {
-    return "/incidents";
-  }
-
   if (isAdminUser(user)) {
     return "/promoters";
   }
