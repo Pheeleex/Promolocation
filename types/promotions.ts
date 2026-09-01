@@ -12,6 +12,9 @@ export type RawPromotion = {
   end_date: string;
   status?: PromotionStatus | string | null;
   is_active?: number | string | boolean | null;
+  agency_id?: ApiId | null;
+  agency?: string | null;
+  agency_name?: string | null;
   created_at?: string | null;
   updated_at?: string | null;
 };
@@ -26,6 +29,9 @@ export type Promotion = {
   endDate: string;
   status: PromotionStatus;
   isActive: boolean;
+  agencyId: string;
+  agencyName: string;
+  agency: string;
   createdAt: string | null;
   updatedAt: string | null;
   assignments: PromotionAssignment[];
@@ -73,6 +79,7 @@ export type CreatePromotionPayload = {
   endDate: string;
   status?: PromotionStatus;
   isActive?: boolean;
+  agencyId?: string;
 };
 
 export type UpdatePromotionPayload = {
@@ -83,6 +90,7 @@ export type UpdatePromotionPayload = {
   endDate?: string;
   status?: PromotionStatus;
   isActive?: boolean;
+  agencyId?: string;
 };
 
 export type DeletePromotionPayload = {
@@ -144,6 +152,9 @@ export type RawQrCodeRecord = {
   promotion_name?: string | null;
   promotion_status?: string | null;
   promotion_active?: number | string | boolean | null;
+  agency_id?: ApiId | null;
+  agency?: string | null;
+  agency_name?: string | null;
   promo_type?: string | null;
   brand?: string | null;
   brand_name?: string | null;
@@ -167,6 +178,9 @@ export type QrCodeRecord = {
   promotionName: string;
   promotionStatus: string;
   promotionActive: boolean;
+  agencyId: string;
+  agencyName: string;
+  agency: string;
   promoType: string;
   brandName: string;
   createdAt: string | null;

@@ -18,10 +18,13 @@ function getApiProxy(apiBaseUrl) {
       changeOrigin: true,
       secure: true,
     };
+    const adminPathname = pathname.endsWith("/api")
+      ? pathname.replace(/\/api$/, "/admin_api")
+      : "/admin_api";
 
     return {
       [pathname]: proxyConfig,
-      "/admin_api": proxyConfig,
+      [adminPathname]: proxyConfig,
     };
   } catch {
     return undefined;

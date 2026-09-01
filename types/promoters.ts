@@ -28,6 +28,9 @@ export type RawPromoter = {
   designation: string | null;
   address: string;
   user_role: string;
+  agency_id?: string | number | null;
+  agency?: string | null;
+  agency_name?: string | null;
   move_in_date: string | null;
   image: string | null;
   avatar: string;
@@ -63,6 +66,9 @@ export type Promoter = {
   role: string;
   active: boolean;
   status: PromoterStatus;
+  agencyId: string;
+  agencyName: string;
+  agency: string;
   createdOn: string;
   createdOnTime: number;
   lastUpdated: string;
@@ -87,6 +93,7 @@ export type CreatePromoterPayload = {
   phone?: string;
   brand?: string;
   promo_code?: string;
+  agency_id?: string;
   promo_URL?: File;
   brands?: {
     brand: string;

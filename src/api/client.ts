@@ -23,15 +23,49 @@ function getBaseUrl() {
 
 const BASE_URL = getBaseUrl();
 
-function buildAdminApiUrl(path: string) {
-  const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+function getAdminApiBaseUrl() {
+  if (!CONFIGURED_BASE_URL) {
+    return "";
+  }
 
   try {
     const configuredUrl = new URL(CONFIGURED_BASE_URL);
-    return `${configuredUrl.origin}${normalizedPath}`;
+    const apiPathname = configuredUrl.pathname.replace(/\/+$/, "");
+    const adminPathname = apiPathname.endsWith("/api")
+      ? apiPathname.replace(/\/api$/, "/admin_api")
+      : "/admin_api";
+
+    if (import.meta.env.DEV) {
+      return adminPathname;
+    }
+
+    return `${configuredUrl.origin}${adminPathname}`;
   } catch {
+    const normalizedBaseUrl = CONFIGURED_BASE_URL.replace(/\/+$/, "");
+
+    if (normalizedBaseUrl.endsWith("/api")) {
+      return normalizedBaseUrl.replace(/\/api$/, "/admin_api");
+    }
+
+    return "/admin_api";
+  }
+}
+
+const ADMIN_API_BASE_URL = getAdminApiBaseUrl();
+
+function buildAdminApiUrl(path: string) {
+  const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+  const adminRelativePath = normalizedPath.replace(/^\/admin_api\/?/, "");
+
+  if (!ADMIN_API_BASE_URL) {
     return normalizedPath;
   }
+
+  const normalizedBaseUrl = ADMIN_API_BASE_URL.replace(/\/+$/, "");
+
+  return adminRelativePath
+    ? `${normalizedBaseUrl}/${adminRelativePath}`
+    : normalizedBaseUrl;
 }
 
 function buildUrl(path: string) {

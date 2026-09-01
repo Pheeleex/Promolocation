@@ -119,6 +119,13 @@ export function findPromotionScheduleConflict(
         return false;
       }
 
+      const targetAgency = targetPromotion.agencyId || targetPromotion.agency;
+      const promotionAgency = promotion.agencyId || promotion.agency;
+
+      if (targetAgency && promotionAgency && targetAgency !== promotionAgency) {
+        return false;
+      }
+
       return (
         canPromotionReserveActiveWindow(promotion) &&
         promotionWindowsOverlap(targetPromotion, promotion)

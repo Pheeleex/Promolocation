@@ -46,6 +46,10 @@ export async function createPromoter(
   formData.append("phone", payload.phone ?? "");
   formData.append("promo_code", payload.promo_code ?? payload.promoter_id);
 
+  if (payload.agency_id) {
+    formData.append("agency_id", payload.agency_id);
+  }
+
   if (payload.brands?.length) {
     payload.brands.forEach((brandAssignment, index) => {
       formData.append(`brands[${index}][brand]`, brandAssignment.brand.trim());

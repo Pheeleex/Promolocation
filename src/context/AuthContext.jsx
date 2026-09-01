@@ -34,6 +34,22 @@ export function AuthProvider({ children }) {
     }
   }, [accessToken, expiresAt, storedAuthUser]);
 
+  useEffect(() => {
+    if (!import.meta.env.DEV || !authUser) {
+      return;
+    }
+
+    console.groupCollapsed("[auth] current user");
+    console.log("user", authUser);
+    console.log("agency", {
+      agencyId: authUser.agencyId,
+      agencyName: authUser.agencyName || authUser.agency,
+      isGlobal: authUser.isGlobal,
+      role: authUser.user_role,
+    });
+    console.groupEnd();
+  }, [authUser]);
+
   return (
     <AuthContext.Provider
       value={{

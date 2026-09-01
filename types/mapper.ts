@@ -6,6 +6,7 @@ import {
 } from "./incidents";
 import { mapPromoterBrand } from "./promoter-brands";
 import { Promoter, PromoterStatus, RawPromoter } from "./promoters";
+import { getAgencyId, getAgencyName } from "../src/utils/agency";
 
 function normalizeDateTimeValue(value: string | number | null | undefined) {
   const text = value == null ? "" : String(value).trim();
@@ -69,6 +70,9 @@ export function mapPromoter(user: RawPromoter): Promoter {
     role: user.user_role,
     active: status === "Active",
     status,
+    agencyId: getAgencyId(user),
+    agencyName: getAgencyName(user),
+    agency: getAgencyName(user),
     createdOn: createdOn.dateTime,
     createdOnTime: createdOn.time,
     lastUpdated: lastUpdated.dateTime,

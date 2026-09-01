@@ -13,6 +13,12 @@ import {
 import {
   usePromoterBrands,
 } from "../hooks/use-promoters-brands";
+import { useAuthStore } from "../store/auth-store";
+import {
+  adminCanSelectAgency,
+  getAgencyLabel,
+  scopeRecordsByAgency,
+} from "../utils/agency";
 import { formatLongDate, getPromoterStatusColor } from "../utils/formatters";
 import { PROMOTER_CODE_LABEL } from "../utils/uiLabels";
 
@@ -135,6 +141,7 @@ function PromoterBrandsCell({ promoterId }) {
 }
 
 export default function PromotersPage() {
+  const authUser = useAuthStore((state) => state.user);
   const { data: fetchedPromoters = [], isLoading, isError, error } = usePromoters();
   const { mutateAsync: updatePromoter, isPending: isUpdatingPromoter } =
     useUpdatePromoter();
@@ -154,9 +161,14 @@ export default function PromotersPage() {
     ? "Switch this off if you want to deactivate the account."
     : "Switch this on if you want to reactivate the account.";
 
+  const canViewAllAgencies = adminCanSelectAgency(authUser);
   const promoters = useMemo(
-    () => fetchedPromoters.filter((promoter) => isPromoterRole(promoter.role)),
-    [fetchedPromoters],
+    () =>
+      scopeRecordsByAgency(
+        fetchedPromoters.filter((promoter) => isPromoterRole(promoter.role)),
+        authUser,
+      ),
+    [authUser, fetchedPromoters],
   );
 
   const normalizedSearchTerm = searchTerm.trim().toLowerCase();
@@ -353,6 +365,15 @@ export default function PromotersPage() {
                 <PromoterBrandsCell promoterId={promoter.promoterId} />
               ),
             },
+            ...(canViewAllAgencies
+              ? [
+                  {
+                    header: "Agency",
+                    key: "agency",
+                    render: (promoter) => getAgencyLabel(promoter),
+                  },
+                ]
+              : []),
             {
               header: (
                 <button

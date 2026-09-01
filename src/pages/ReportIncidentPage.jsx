@@ -1,29 +1,46 @@
-import React, { useState, useRef } from "react";
+import React, { useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import Swal from "sweetalert2";
 import AppLayout from "../components/AppLayout";
-import { createIncident } from "../api/incidents";
-import { useAuthStore } from "../store/auth-store";
-import { useQueryClient } from "@tanstack/react-query";
-import { getIncidentsQueryKey } from "../hooks/use-incidents";
+import { HELP_DESK_REQUEST_TYPES } from "../data/helpDeskMock";
 import { useAutoResizeTextarea } from "../hooks/use-auto-resize-textarea";
 import { validateImageUpload } from "../utils/imageUploadValidation";
-import {
-  getMissingIncidentFieldLabels,
-  getMissingIncidentFieldsAlertConfig,
-} from "../utils/incidentFormValidation";
-import Swal from "sweetalert2";
+
+const PRIORITY_OPTIONS = ["Low", "Medium", "High", "Urgent"];
+
+function getMissingRequestFields({ requestType, title, description }) {
+  const missingFields = [];
+
+  if (!requestType) {
+    missingFields.push("Request Type");
+  }
+
+  if (!title) {
+    missingFields.push("Request Title");
+  }
+
+  if (!description) {
+    missingFields.push("Request Details");
+  }
+
+  return missingFields;
+}
 
 export default function ReportIncidentPage() {
+  const [requestType, setRequestType] = useState("incident_report");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+  const [agency, setAgency] = useState("");
+  const [priority, setPriority] = useState("Medium");
   const [image, setImage] = useState(null);
   const [preview, setPreview] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const fileInputRef = useRef(null);
   const descriptionTextareaRef = useRef(null);
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
-  const { user } = useAuthStore();
+  const selectedRequestType = HELP_DESK_REQUEST_TYPES.find(
+    (type) => type.value === requestType,
+  );
 
   useAutoResizeTextarea(descriptionTextareaRef, description);
 
@@ -36,8 +53,8 @@ export default function ReportIncidentPage() {
     }
   };
 
-  const handleImageChange = (e) => {
-    const file = e.target.files?.[0];
+  const handleImageChange = (event) => {
+    const file = event.target.files?.[0];
 
     if (!file) {
       return;
@@ -49,7 +66,7 @@ export default function ReportIncidentPage() {
       resetSelectedImage();
       Swal.fire({
         icon: "error",
-        title: "Invalid Image",
+        title: "Invalid Attachment",
         text: validationError,
         confirmButtonColor: "#d33",
       });
@@ -57,6 +74,7 @@ export default function ReportIncidentPage() {
     }
 
     setImage(file);
+
     const reader = new FileReader();
     reader.onloadend = () => {
       setPreview(reader.result);
@@ -64,32 +82,23 @@ export default function ReportIncidentPage() {
     reader.readAsDataURL(file);
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handleSubmit = async (event) => {
+    event.preventDefault();
 
     const trimmedTitle = title.trim();
     const trimmedDescription = description.trim();
-    const missingFieldLabels = getMissingIncidentFieldLabels({
+    const missingFieldLabels = getMissingRequestFields({
+      requestType,
       title: trimmedTitle,
       description: trimmedDescription,
     });
-    const missingFieldsAlert = getMissingIncidentFieldsAlertConfig(missingFieldLabels);
 
-    if (missingFieldsAlert) {
+    if (missingFieldLabels.length) {
       Swal.fire({
         icon: "warning",
-        title: missingFieldsAlert.title,
-        text: missingFieldsAlert.text,
+        title: "Missing Request Details",
+        text: `Please complete: ${missingFieldLabels.join(", ")}.`,
         confirmButtonColor: "#3085d6",
-      });
-      return;
-    }
-
-    if (!user?.user_id || !user?.promoter_id) {
-      Swal.fire({
-        icon: "error",
-        title: "Missing Identification",
-        text: "Your account information is incomplete. Please contact support.",
       });
       return;
     }
@@ -101,7 +110,7 @@ export default function ReportIncidentPage() {
         resetSelectedImage();
         Swal.fire({
           icon: "error",
-          title: "Invalid Image",
+          title: "Invalid Attachment",
           text: imageValidationError,
           confirmButtonColor: "#d33",
         });
@@ -110,35 +119,27 @@ export default function ReportIncidentPage() {
     }
 
     setIsSubmitting(true);
-    try {
-      await createIncident(
-        user.user_id.toString(),
-        user.promoter_id,
-        trimmedTitle,
-        trimmedDescription,
-        image,
-      );
 
-      // Invalidate queries to refresh data
-      queryClient.invalidateQueries({
-        queryKey: getIncidentsQueryKey(String(user.user_id)),
+    try {
+      await new Promise((resolve) => {
+        window.setTimeout(resolve, 500);
       });
 
       await Swal.fire({
         icon: "success",
-        title: "Success",
-        text: "Incident reported successfully!",
+        title: "Request Submitted",
+        text: "This prototype submitted the request locally so you can review the Help Desk flow.",
         confirmButtonColor: "#22c55e",
         confirmButtonText: "OK",
       });
 
       navigate("/incidents");
     } catch (error) {
-      console.error("Failed to submit incident:", error);
+      console.error("Failed to submit request:", error);
       Swal.fire({
         icon: "error",
         title: "Submission Failed",
-        text: error?.message || "Something went wrong while reporting the incident.",
+        text: error?.message || "Something went wrong while submitting the request.",
       });
     } finally {
       setIsSubmitting(false);
@@ -149,61 +150,112 @@ export default function ReportIncidentPage() {
     <AppLayout activeNav="report_incident" mainContentClassName="detail-main">
       <div className="report-page-wrapper">
         <div className="report-header">
-          <h1>Report Incident</h1>
-          <p>Submit a record and description of the observed issue.</p>
+          <h1>New Help Desk Request</h1>
+          <p>Submit incidents, access changes, setup needs, and operational support requests.</p>
         </div>
 
         <div className="report-card-container">
           <form onSubmit={handleSubmit} className="report-form-premium" noValidate>
+            <div className="request-type-panel">
+              {HELP_DESK_REQUEST_TYPES.map((type) => (
+                <button
+                  type="button"
+                  key={type.value}
+                  className={`request-type-option${requestType === type.value ? " is-selected" : ""}`}
+                  onClick={() => setRequestType(type.value)}
+                  disabled={isSubmitting}
+                >
+                  <span>{type.label}</span>
+                  <small>{type.description}</small>
+                </button>
+              ))}
+            </div>
+
             <div className="report-form-grid">
               <div className="report-form-left">
                 <div className="input-field-group">
-                  <label htmlFor="incident-title">
-                    Incident Title <span className="required-mark">*</span>
+                  <label htmlFor="request-title">
+                    Request Title <span className="required-mark">*</span>
                   </label>
                   <input
-                    id="incident-title"
+                    id="request-title"
                     type="text"
-                    placeholder="Use a descriptive title that summarizes the issue."
+                    placeholder={
+                      selectedRequestType?.value === "setup_request"
+                        ? "Example: Add new agency and promoter batch"
+                        : "Use a descriptive title that summarizes the request."
+                    }
                     value={title}
-                    onChange={(e) => setTitle(e.target.value)}
+                    onChange={(event) => setTitle(event.target.value)}
                     disabled={isSubmitting}
                     className="premium-input-field"
                   />
                 </div>
 
                 <div className="input-field-group">
-                  <label htmlFor="incident-desc">
-                    Detailed Description <span className="required-mark">*</span>
+                  <label htmlFor="request-desc">
+                    Request Details <span className="required-mark">*</span>
                   </label>
                   <textarea
-                    id="incident-desc"
+                    id="request-desc"
                     ref={descriptionTextareaRef}
-                    placeholder="Provide as much context as possible. Include device type, location, and specific observations..."
+                    placeholder="Include the exact change needed, affected agency/promoters/brands/promotions, and any deadline or context..."
                     value={description}
-                    onChange={(e) => setDescription(e.target.value)}
+                    onChange={(event) => setDescription(event.target.value)}
                     disabled={isSubmitting}
                     className="premium-textarea-field"
-                  ></textarea>
+                  />
+                </div>
+
+                <div className="request-meta-grid">
+                  <div className="input-field-group">
+                    <label htmlFor="request-agency">Related Agency</label>
+                    <input
+                      id="request-agency"
+                      type="text"
+                      placeholder="Example: Zipline, Skyline, or All Agencies"
+                      value={agency}
+                      onChange={(event) => setAgency(event.target.value)}
+                      disabled={isSubmitting}
+                      className="premium-input-field"
+                    />
+                  </div>
+
+                  <div className="input-field-group">
+                    <label htmlFor="request-priority">Priority</label>
+                    <select
+                      id="request-priority"
+                      value={priority}
+                      onChange={(event) => setPriority(event.target.value)}
+                      disabled={isSubmitting}
+                      className="premium-input-field"
+                    >
+                      {PRIORITY_OPTIONS.map((priorityOption) => (
+                        <option key={priorityOption} value={priorityOption}>
+                          {priorityOption}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
               </div>
 
               <div className="report-form-right">
                 <div className="input-field-group">
-                  <label>Photographic Proof</label>
+                  <label>Attachment</label>
                   <div
                     className={`premium-upload-zone ${preview ? "has-image" : ""}`}
                     onClick={() => !isSubmitting && fileInputRef.current.click()}
                   >
                     {preview ? (
                       <>
-                        <img src={preview} alt="Evidence preview" className="evidence-preview-img" />
+                        <img src={preview} alt="Request attachment preview" className="evidence-preview-img" />
                         <div className="upload-overlay">
                           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                             <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
                             <circle cx="12" cy="13" r="4" />
                           </svg>
-                          <span>Change Photo</span>
+                          <span>Change Attachment</span>
                         </div>
                       </>
                     ) : (
@@ -215,7 +267,7 @@ export default function ReportIncidentPage() {
                             <line x1="12" y1="3" x2="12" y2="15" />
                           </svg>
                         </div>
-                        <p className="upload-prompt">Tap to upload proof</p>
+                        <p className="upload-prompt">Tap to upload support file</p>
                         <p className="upload-subtext">JPG, PNG or WEBP (Max 5MB)</p>
                       </div>
                     )}
@@ -232,18 +284,15 @@ export default function ReportIncidentPage() {
             </div>
 
             <div className="report-form-footer">
-
-              <button
-                type="submit"
-                className="submit-report-btn"
-                disabled={isSubmitting}
-              >
+              <button type="submit" className="submit-report-btn" disabled={isSubmitting}>
                 {isSubmitting ? (
                   <>
                     <span className="spinner"></span>
                     Submitting...
                   </>
-                ) : "Send Report"}
+                ) : (
+                  "Submit Request"
+                )}
               </button>
             </div>
           </form>
@@ -278,13 +327,60 @@ export default function ReportIncidentPage() {
         }
 
         .report-form-premium {
-          padding: 40px;
+          padding: 32px;
+        }
+
+        .request-type-panel {
+          display: grid;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          gap: 12px;
+          margin-bottom: 28px;
+        }
+
+        .request-type-option {
+          display: flex;
+          min-height: 120px;
+          flex-direction: column;
+          gap: 8px;
+          justify-content: flex-start;
+          text-align: left;
+          border: 1px solid var(--border-blue);
+          border-radius: 8px;
+          background: #ffffff;
+          color: var(--navy);
+          padding: 16px;
+          cursor: pointer;
+          transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s;
+        }
+
+        .request-type-option:hover:not(:disabled),
+        .request-type-option.is-selected {
+          border-color: #2563eb;
+          box-shadow: 0 12px 30px rgba(37, 99, 235, 0.12);
+          transform: translateY(-1px);
+        }
+
+        .request-type-option span {
+          font-size: 15px;
+          font-weight: 800;
+        }
+
+        .request-type-option small {
+          color: #64748b;
+          font-size: 13px;
+          line-height: 1.45;
         }
 
         .report-form-grid {
           display: grid;
           grid-template-columns: 1fr 340px;
           gap: 40px;
+        }
+
+        .request-meta-grid {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 16px;
         }
 
         .input-field-group {
@@ -298,11 +394,6 @@ export default function ReportIncidentPage() {
           font-weight: 700;
           font-size: 15px;
           color: var(--navy);
-        }
-
-        .field-hint {
-          font-size: 12px;
-          color: #94a3b8;
         }
 
         .premium-input-field {
@@ -495,9 +586,12 @@ export default function ReportIncidentPage() {
         }
 
         @media (max-width: 900px) {
+          .request-type-panel,
+          .request-meta-grid,
           .report-form-grid {
             grid-template-columns: 1fr;
           }
+
           .premium-upload-zone {
             height: 320px;
           }
@@ -507,10 +601,12 @@ export default function ReportIncidentPage() {
           .report-form-premium {
             padding: 24px;
           }
+
           .report-form-footer {
             flex-direction: column-reverse;
           }
-          .submit-report-btn, .secondary-action-btn {
+
+          .submit-report-btn {
             width: 100%;
           }
         }
