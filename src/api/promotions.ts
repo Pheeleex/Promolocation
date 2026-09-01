@@ -20,6 +20,10 @@ import type {
   UploadPromotionQrCodesResponse,
 } from "../../types/promotions";
 import {
+  getAgencyId,
+  getAgencyName,
+} from "../utils/agency";
+import {
   authenticatedAdminFormPost,
   authenticatedAdminPost,
 } from "./loggedIn-client";
@@ -117,6 +121,9 @@ export function mapPromotion(promotion: RawPromotion): Promotion {
     endDate: toDateInputValue(promotion.end_date),
     status,
     isActive,
+    agencyId: getAgencyId(promotion),
+    agencyName: getAgencyName(promotion),
+    agency: getAgencyName(promotion),
     createdAt: promotion.created_at || null,
     updatedAt: promotion.updated_at || null,
     assignments: [],
@@ -177,6 +184,8 @@ function mapQrCodeRecord(record: RawQrCodeRecord, index: number): QrCodeRecord {
   const code = firstTextValue(record.qr_code, record.qrCode, record.code) ||
     fileName.split(".").slice(0, -1).join(".") ||
     fileName;
+  const promotionCode = firstTextValue(record.promotion_code);
+  const promoterId = firstTextValue(record.promoter_id, record.promoter_code);
 
   return {
     id: record.id ?? `${code || "qr"}-${index}`,
@@ -189,14 +198,17 @@ function mapQrCodeRecord(record: RawQrCodeRecord, index: number): QrCodeRecord {
       record.qr_image,
       record.file_url,
     ) || null,
-    promoterId: firstTextValue(record.promoter_id, record.promoter_code),
+    promoterId,
     promoterName: firstTextValue(record.promoter_name),
     promoterEmail: firstTextValue(record.promoter_email),
     promoterPhone: firstTextValue(record.promoter_phone),
-    promotionCode: firstTextValue(record.promotion_code),
+    promotionCode,
     promotionName: firstTextValue(record.promotion_name),
     promotionStatus: firstTextValue(record.promotion_status),
     promotionActive: normalizeBooleanFlag(record.promotion_active),
+    agencyId: getAgencyId(record),
+    agencyName: getAgencyName(record),
+    agency: getAgencyName(record),
     promoType: firstTextValue(record.promo_type),
     brandName: firstTextValue(record.brand, record.brand_name),
     createdAt: record.created_at || null,
@@ -238,6 +250,10 @@ function buildPromotionFormData(
 
   if (payload.isActive !== undefined) {
     formData.set("is_active", payload.isActive ? "1" : "0");
+  }
+
+  if (payload.agencyId !== undefined) {
+    formData.set("agency_id", payload.agencyId);
   }
 
   return formData;

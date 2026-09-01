@@ -5,6 +5,12 @@ import DataTable from "../components/DataTable";
 import { SelectInput, TextInput } from "../components/FormControls";
 import SearchBar from "../components/SearchBar";
 import { useQrCodes } from "../hooks/use-promotions";
+import { useAuthStore } from "../store/auth-store";
+import {
+  adminCanSelectAgency,
+  getAgencyLabel,
+  scopeRecordsByAgency,
+} from "../utils/agency";
 
 const EMPTY_FILTERS = {
   brand: "",
@@ -144,6 +150,8 @@ function recordMatchesSearch(record, searchTerm) {
 }
 
 export default function QrCodesPage() {
+  const authUser = useAuthStore((state) => state.user);
+  const canViewAllAgencies = adminCanSelectAgency(authUser);
   const [draftFilters, setDraftFilters] = useState(EMPTY_FILTERS);
   const [appliedFilters, setAppliedFilters] = useState(EMPTY_FILTERS);
   const [groupBy, setGroupBy] = useState("dateAdded");
@@ -160,13 +168,17 @@ export default function QrCodesPage() {
     promotionCode: appliedFilters.promotionCode,
   });
   const hasActiveFilters = Object.values(appliedFilters).some(Boolean);
+  const scopedQrCodes = useMemo(
+    () => scopeRecordsByAgency(qrCodes, authUser),
+    [authUser, qrCodes],
+  );
   const visibleQrCodes = useMemo(
     () =>
       sortQrCodes(
-        qrCodes.filter((record) => recordMatchesSearch(record, searchTerm)),
+        scopedQrCodes.filter((record) => recordMatchesSearch(record, searchTerm)),
         groupBy,
       ),
-    [groupBy, qrCodes, searchTerm],
+    [groupBy, scopedQrCodes, searchTerm],
   );
 
   const updateFilter = (field, value) => {
@@ -203,7 +215,7 @@ export default function QrCodesPage() {
             </p>
           </div>
           <span className="brands-admin-count">
-            {visibleQrCodes.length} of {qrCodes.length} QR codes
+            {visibleQrCodes.length} of {scopedQrCodes.length} QR codes
           </span>
         </div>
 
@@ -327,6 +339,15 @@ export default function QrCodesPage() {
                 </div>
               ),
             },
+            ...(canViewAllAgencies
+              ? [
+                  {
+                    header: "Agency",
+                    key: "agency",
+                    render: (record) => getAgencyLabel(record),
+                  },
+                ]
+              : []),
             {
               header: "Status",
               key: "status",

@@ -8,6 +8,7 @@ import PasswordField from "../components/PasswordField";
 import { useAuth } from "../context/AuthContext";
 import { useChangePassword } from "../hooks/use-admin-auth";
 import { usePasswordAttemptLimit } from "../hooks/use-password-attempt-limit";
+import { getAgencyLabel } from "../utils/agency";
 import { getUserRoleDisplayName } from "../utils/uiLabels";
 
 export default function SettingsPage() {
@@ -29,6 +30,7 @@ export default function SettingsPage() {
     authUser?.fullname ||
     [authUser?.first_name, authUser?.last_name].filter(Boolean).join(" ").trim() ||
     "Dashboard User";
+  const agencyLabel = getAgencyLabel(authUser);
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -147,6 +149,10 @@ export default function SettingsPage() {
             <div className="settings-meta-item">
               <span className="settings-meta-label">Email Address</span>
               <strong>{authUser?.email || "--"}</strong>
+            </div>
+            <div className="settings-meta-item">
+              <span className="settings-meta-label">Agency</span>
+              <strong>{agencyLabel}</strong>
             </div>
           </div>
         </section>

@@ -20,6 +20,10 @@ export type LoginResponse = {
   last_name: string;
   phone: string;
   user_role: string;
+  agency?: string | null;
+  agency_id?: string | number | null;
+  agency_name?: string | null;
+  is_global?: boolean | number | string | null;
   avatar: string;
   active: boolean;
   email_verified: boolean;

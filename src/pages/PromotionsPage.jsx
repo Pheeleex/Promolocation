@@ -27,6 +27,7 @@ import {
   useUpdatePromotion,
   useUploadPromotionQrCodesBulk,
 } from "../hooks/use-promotions";
+import { agencyKeys, useAgencies } from "../hooks/use-agencies";
 import {
   useCreatePromoterBrand,
   useDeletePromoterBrand,
@@ -35,6 +36,13 @@ import {
   useUpdatePromoterBrand,
 } from "../hooks/use-promoters-brands";
 import { usePromoters } from "../hooks/use-promoters";
+import { useAuthStore } from "../store/auth-store";
+import {
+  adminCanSelectAgency,
+  getAgencyLabel,
+  getAgencyId,
+  scopeRecordsByAgency,
+} from "../utils/agency";
 import {
   validateFileSize,
   validateImageUpload,
@@ -56,6 +64,7 @@ const EMPTY_PROMOTION_FORM = {
   startDate: "",
   endDate: "",
   status: "",
+  agency: "",
 };
 const PROMOTION_UPLOAD_FILE_BASENAME = "Promotion Management";
 const PROMOTION_UPLOAD_ACCEPT = ".csv,.xlsx,.xls";
@@ -527,6 +536,7 @@ function validateWorkbookRows(
   promoId,
   systemBrands = [],
   promoters = [],
+  agencyLabel = "this promotion",
 ) {
   const expectedHeaders = ["promotion_code", "promoter_code", "brand", "qr code"];
   const headers = rows[0]?.map(normalizeWorkbookHeader) || [];
@@ -576,6 +586,7 @@ function validateWorkbookRows(
     const promoterCode = String(values[1] || "").trim();
     const brand = String(values[2] || "").trim();
     const qrCode = String(values[3] || "").trim();
+   
 
     if (promotionCode && promotionCode !== String(promoId)) {
       errors.push(`Row ${rowNumber} must use promotion_code ${promoId}.`);
@@ -591,7 +602,7 @@ function validateWorkbookRows(
     }
 
     if (promoterCodes.size && !promoterCodes.has(normalizePromoterCode(promoterCode))) {
-      errors.push(`Row ${rowNumber} uses promoter_code "${promoterCode}", but that promoter does not exist.`);
+      errors.push(`Row ${rowNumber} uses promoter_code "${promoterCode}", but that promoter does not exist in ${agencyLabel}.`);
     }
 
     errors.push(...getBrandValidationErrors({
@@ -872,6 +883,7 @@ async function validatePromotionWorkbookFile(
   promoId,
   systemBrands,
   promoters,
+  agencyLabel = "this promotion",
 ) {
   const fileNameError = validatePromotionUploadFileName(file);
 
@@ -896,12 +908,12 @@ async function validatePromotionWorkbookFile(
   }
 
   if (!promoters.length) {
-    return ["Unable to validate promoters because no promoters were loaded."];
+    return [`Unable to validate promoters because no promoters were loaded for ${agencyLabel}.`];
   }
 
   try {
     const rows = await parsePromotionWorkbookRows(file);
-    return validateWorkbookRows(rows, promoId, systemBrands, promoters);
+    return validateWorkbookRows(rows, promoId, systemBrands, promoters, agencyLabel);
   } catch (error) {
     return [error?.message || "Unable to inspect the workbook."];
   }
@@ -1238,6 +1250,7 @@ function mapBackendQrUploadErrors(error) {
 }
 
 function validateSingleAssignmentFields({
+  agencyLabel = "this promotion",
   brandName,
   promoterCode,
   qrFile,
@@ -1262,7 +1275,7 @@ function validateSingleAssignmentFields({
         .includes(normalizePromoterCode(promoterCode)),
     )
   ) {
-    errors.push(`Promoter ${promoterCode} does not exist.`);
+    errors.push(`Promoter ${promoterCode} does not exist in ${agencyLabel}.`);
   }
 
   if (!brandName) {
@@ -1300,9 +1313,13 @@ function validateSingleAssignmentFields({
 }
 
 function PromotionFormModal({
+  adminAgency,
+  agencies = [],
+  canChooseAgency = false,
   currentStatus = "",
   form,
   formError,
+  isLoadingAgencies = false,
   isOpen,
   mode,
   onClose,
@@ -1365,6 +1382,41 @@ function PromotionFormModal({
           placeholder="What this promotion covers"
           rows={4}
         />
+
+        {canChooseAgency ? (
+          <SelectInput
+            id="promotionAgency"
+            label="Agency"
+            value={form.agency}
+            onChange={(event) =>
+              setForm((currentForm) => ({
+                ...currentForm,
+                agency: event.target.value,
+              }))
+            }
+            required
+            disabled={isSubmitting || isLoadingAgencies || mode === "edit"}
+          >
+            <option value="">
+              {isLoadingAgencies ? "Loading agencies..." : "Select agency"}
+            </option>
+            {agencies
+              .filter((agency) => mode === "edit" || agency.isActive)
+              .map((agency) => (
+                <option key={agency.id} value={agency.id}>
+                  {agency.name}
+                </option>
+              ))}
+          </SelectInput>
+        ) : (
+          <TextInput
+            id="promotionAgency"
+            label="Agency"
+            value={getAgencyLabel(adminAgency)}
+            disabled
+            readOnly
+          />
+        )}
 
         <div className="promotion-date-grid">
           <DateInput
@@ -1441,6 +1493,11 @@ function PromotionFormModal({
 }
 
 function PromotionsListView() {
+  const authUser = useAuthStore((state) => state.user);
+  const adminAgencyId = getAgencyId(authUser);
+  const canChooseAgency = adminCanSelectAgency(authUser);
+  const { data: agencies = [], isLoading: isLoadingAgencies } =
+    useAgencies(canChooseAgency);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [editingPromotion, setEditingPromotion] = useState(null);
@@ -1458,7 +1515,14 @@ function PromotionsListView() {
     useUpdatePromotion();
   const isSavingPromotion = isCreatingPromotion || isUpdatingPromotion;
 
-  const sortedPromotions = useMemo(() => sortPromotions(promotions), [promotions]);
+  const scopedPromotions = useMemo(
+    () => scopeRecordsByAgency(promotions, authUser),
+    [authUser, promotions],
+  );
+  const sortedPromotions = useMemo(
+    () => sortPromotions(scopedPromotions),
+    [scopedPromotions],
+  );
 
   const filteredPromotions = useMemo(() => {
     const normalizedSearchTerm = searchTerm.trim().toLowerCase();
@@ -1477,7 +1541,12 @@ function PromotionsListView() {
         return true;
       }
 
-      return [promotion.name, promotionState.label, getPromotionCode(promotion)]
+      return [
+        promotion.name,
+        promotionState.label,
+        getPromotionCode(promotion),
+        promotion.agency,
+      ]
         .join(" ")
         .toLowerCase()
         .includes(normalizedSearchTerm);
@@ -1485,7 +1554,10 @@ function PromotionsListView() {
   }, [searchTerm, sortedPromotions, statusFilter]);
   const openCreateModal = () => {
     setEditingPromotion({ mode: "create" });
-    setForm(EMPTY_PROMOTION_FORM);
+    setForm({
+      ...EMPTY_PROMOTION_FORM,
+      agency: canChooseAgency ? "" : adminAgencyId,
+    });
     setFormError("");
   };
 
@@ -1497,6 +1569,7 @@ function PromotionsListView() {
       startDate: promotion.startDate,
       endDate: promotion.endDate,
       status: "",
+      agency: promotion.agencyId || adminAgencyId,
     });
     setFormError("");
   };
@@ -1523,11 +1596,18 @@ function PromotionsListView() {
       ? deriveCreatePromotionStatus(form.startDate, form.endDate)
       : form.status || editingPromotion.status;
     const isActive = nextStatus === "active";
+    const selectedPromotionAgencyId = canChooseAgency
+      ? form.agency
+      : adminAgencyId;
     const isDeactivatingPromotion =
       !isCreating && ["inactive", "expired"].includes(form.status);
 
     if (!name) {
       validationErrors.push("Promotion name is required.");
+    }
+
+    if (!selectedPromotionAgencyId) {
+      validationErrors.push("Agency is required.");
     }
 
     if (!isDeactivatingPromotion) {
@@ -1551,6 +1631,7 @@ function PromotionsListView() {
       name,
       startDate: form.startDate,
       status: nextStatus,
+      agencyId: selectedPromotionAgencyId,
     };
     const conflictingPromotion = findPromotionScheduleConflict(
       targetPromotion,
@@ -1576,6 +1657,7 @@ function PromotionsListView() {
           description: form.description,
           startDate: form.startDate,
           endDate: form.endDate,
+          agencyId: selectedPromotionAgencyId,
         });
       } else {
         const updatePayload = {
@@ -1659,7 +1741,7 @@ function PromotionsListView() {
             </SelectInput>
           </div>
           <span className="brands-admin-count">
-            {filteredPromotions.length} of {promotions.length} promotions
+            {filteredPromotions.length} of {scopedPromotions.length} promotions
           </span>
         </div>
 
@@ -1690,6 +1772,15 @@ function PromotionsListView() {
               render: (promotion) =>
                 `${formatDate(promotion.startDate)} - ${formatDate(promotion.endDate)}`,
             },
+            ...(canChooseAgency
+              ? [
+                  {
+                    header: "Agency",
+                    key: "agency",
+                    render: (promotion) => getAgencyLabel(promotion),
+                  },
+                ]
+              : []),
             {
               header: "Status",
               key: "status",
@@ -1729,7 +1820,7 @@ function PromotionsListView() {
               ),
             },
           ]}
-          dependencies={[searchTerm, promotions.length]}
+          dependencies={[searchTerm, scopedPromotions.length, statusFilter]}
           emptyMessage="No promotions created yet."
           error={error}
           errorMessage="Unable to load promotions right now."
@@ -1743,6 +1834,9 @@ function PromotionsListView() {
       </div>
 
       <PromotionFormModal
+        adminAgency={authUser}
+        agencies={agencies}
+        canChooseAgency={canChooseAgency}
         currentStatus={editingPromotion?.status || ""}
         form={form}
         formError={formError}
@@ -1750,6 +1844,7 @@ function PromotionsListView() {
         mode={editingPromotion?.mode === "create" ? "create" : "edit"}
         onClose={closeModal}
         isSubmitting={isSavingPromotion}
+        isLoadingAgencies={isLoadingAgencies}
         onSubmit={savePromotion}
         setForm={setForm}
         submitLabel={
@@ -2035,6 +2130,11 @@ function PromotionManagementView({
     isLoading: isLoadingPromoters,
     isError: isPromotersError,
   } = usePromoters();
+  const scopedPromoters = useMemo(
+    () =>
+      promoters.filter((promoter) => promoter.agencyId === promotion?.agencyId),
+    [promoters, promotion?.agencyId],
+  );
   const promoId = getPromotionCode(promotion);
   const {
     data: promotionBrands = [],
@@ -2170,7 +2270,8 @@ function PromotionManagementView({
         uploadFile,
         promoId,
         systemBrands,
-        promoters,
+        scopedPromoters,
+        getAgencyLabel(promotion),
       );
 
       setUploadValidation({
@@ -2255,7 +2356,8 @@ function PromotionManagementView({
       selectedFile,
       promoId,
       systemBrands,
-      promoters,
+      scopedPromoters,
+      getAgencyLabel(promotion),
     );
 
     setUploadValidation({
@@ -2472,12 +2574,13 @@ function PromotionManagementView({
     const promoterCode = singleAssignmentForm.promoterCode.trim().toUpperCase();
     const brandName = singleAssignmentForm.brand.trim();
     const errors = validateSingleAssignmentFields({
+      agencyLabel: getAgencyLabel(promotion),
       brandName,
       promoterCode,
       qrFile: singleAssignmentForm.qrFile,
       qrFileRequired: true,
       systemBrands,
-      promoters,
+      promoters: scopedPromoters,
     });
 
     setSingleAssignmentErrors(errors);
@@ -2563,12 +2666,13 @@ function PromotionManagementView({
     const promoterCode = editAssignmentForm.promoterCode.trim().toUpperCase();
     const brandName = editAssignmentForm.brand.trim();
     const errors = validateSingleAssignmentFields({
+      agencyLabel: getAgencyLabel(promotion),
       brandName,
       promoterCode,
       qrFile: editAssignmentForm.qrFile,
       qrFileRequired: false,
       systemBrands,
-      promoters,
+      promoters: scopedPromoters,
     });
 
     setEditAssignmentErrors(errors);
@@ -2741,6 +2845,9 @@ function PromotionManagementView({
               <div className="assignment-promotion-meta">
                 <span className={`promotion-status ${promotionState.className}`}>
                   {promotionState.label}
+                </span>
+                <span className="promotion-status is-agency">
+                  {getAgencyLabel(promotion)}
                 </span>
                 <span>
                   <AssignmentIcon type="calendar" />
@@ -3340,7 +3447,87 @@ function PromotionManagementView({
   );
 }
 
+function ActivePromotionsOverview({
+  error,
+  isError,
+  isLoading,
+  promotions,
+}) {
+  const activePromotions = useMemo(
+    () => sortPromotions(promotions.filter(isCurrentlyActivePromotion)),
+    [promotions],
+  );
+
+  return (
+    <AppLayout activeNav="active-promotion">
+      <div className="main-card promotions-card">
+        <div className="card-header promotions-header">
+          <div>
+            <p className="brands-admin-eyebrow">Active Promotions</p>
+            <h2>Active Promotions by Agency</h2>
+            <p>
+              Each agency can have one active promotion. Choose one to manage its
+              promoter-brand assignments.
+            </p>
+          </div>
+          <span className="brands-admin-count">
+            {activePromotions.length} active
+          </span>
+        </div>
+
+        <DataTable
+          columns={[
+            {
+              header: "Agency",
+              key: "agency",
+              render: (promotion) => getAgencyLabel(promotion),
+            },
+            {
+              header: "Promotion",
+              key: "promotion",
+              render: (promotion) => (
+                <div className="promotion-name-cell">
+                  <strong>{promotion.name}</strong>
+                  <span>{getPromotionCode(promotion)}</span>
+                </div>
+              ),
+            },
+            {
+              header: "Duration",
+              key: "duration",
+              render: (promotion) =>
+                `${formatDate(promotion.startDate)} - ${formatDate(promotion.endDate)}`,
+            },
+            {
+              cellClassName: "actions-column",
+              header: "Actions",
+              headerClassName: "actions-column",
+              key: "actions",
+              render: (promotion) => (
+                <div className="brand-admin-actions">
+                  <Link to={`/promotions/${promotion.id}`}>Manage</Link>
+                </div>
+              ),
+            },
+          ]}
+          dependencies={[activePromotions.length]}
+          emptyMessage="No active promotions found."
+          error={error}
+          errorMessage="Unable to load active promotions right now."
+          getRowKey={(promotion) => promotion.id}
+          isError={isError}
+          isLoading={isLoading}
+          items={activePromotions}
+          loadingMessage="Loading active promotions..."
+          tableClassName="data-table promotions-table"
+        />
+      </div>
+    </AppLayout>
+  );
+}
+
 export default function PromotionsPage({ activePromotionOnly = false }) {
+  const authUser = useAuthStore((state) => state.user);
   const { promotionId } = useParams();
   const {
     data: promotions = [],
@@ -3348,11 +3535,28 @@ export default function PromotionsPage({ activePromotionOnly = false }) {
     isError: isPromotionsError,
     error: promotionsError,
   } = usePromotions();
+  const scopedPromotions = useMemo(
+    () => scopeRecordsByAgency(promotions, authUser),
+    [authUser, promotions],
+  );
 
   if (activePromotionOnly) {
+    const activePromotions = scopedPromotions.filter(isCurrentlyActivePromotion);
+
+    if (activePromotions.length > 1) {
+      return (
+        <ActivePromotionsOverview
+          promotions={scopedPromotions}
+          isLoading={isPromotionsLoading}
+          isError={isPromotionsError}
+          error={promotionsError}
+        />
+      );
+    }
+
     return (
       <PromotionManagementView
-        promotions={promotions}
+        promotions={scopedPromotions}
         isPromotionsLoading={isPromotionsLoading}
         isPromotionsError={isPromotionsError}
         promotionsError={promotionsError}
@@ -3364,7 +3568,7 @@ export default function PromotionsPage({ activePromotionOnly = false }) {
   if (promotionId) {
     return (
       <PromotionManagementView
-        promotions={promotions}
+        promotions={scopedPromotions}
         isPromotionsLoading={isPromotionsLoading}
         isPromotionsError={isPromotionsError}
         promotionsError={promotionsError}

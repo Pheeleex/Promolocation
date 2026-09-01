@@ -9,7 +9,14 @@ import {
   updatePromoter as updatePromoterRequest,
 } from "../api/promoters";
 import AppLayout from "../components/AppLayout";
-import { FormErrorSummary } from "../components/FormControls";
+import { FormErrorSummary, SelectInput } from "../components/FormControls";
+import { useAuthStore } from "../store/auth-store";
+import { useAgencies } from "../hooks/use-agencies";
+import {
+  adminCanSelectAgency,
+  getAgencyLabel,
+  getAgencyId,
+} from "../utils/agency";
 import { PROMOTER_CODE_LABEL } from "../utils/uiLabels";
 
 const PROMOTER_CODE_PATTERN = /^[A-Z0-9]{5}$/;
@@ -45,7 +52,15 @@ function getPromoterIdValidationMessage(value) {
 }
 
 export default function AddPromoterPage() {
+  const authUser = useAuthStore((state) => state.user);
+  const adminAgencyId = getAgencyId(authUser);
+  const canChooseAgency = adminCanSelectAgency(authUser);
+  const { data: agencies = [], isLoading: isLoadingAgencies } =
+    useAgencies(canChooseAgency);
   const [promoterIdInput, setPromoterIdInput] = useState("");
+  const [selectedAgency, setSelectedAgency] = useState(
+    canChooseAgency ? "" : adminAgencyId,
+  );
   const [formErrors, setFormErrors] = useState([]);
   const [isPromoterActive, setIsPromoterActive] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -56,6 +71,7 @@ export default function AddPromoterPage() {
 
   const resetForm = () => {
     setPromoterIdInput("");
+    setSelectedAgency(canChooseAgency ? "" : adminAgencyId);
     setFormErrors([]);
     setIsPromoterActive(true);
   };
@@ -69,11 +85,27 @@ export default function AddPromoterPage() {
 
     const normalizedPromoterId = normalizePromoterId(promoterIdInput);
     const validationMessage = getPromoterIdValidationMessage(promoterIdInput);
+    const promoterAgencyId = canChooseAgency ? selectedAgency : adminAgencyId;
+    const selectedAgencyRecord = agencies.find(
+      (agency) => agency.id === promoterAgencyId,
+    );
+    const promoterAgencyLabel = canChooseAgency
+      ? getAgencyLabel(selectedAgencyRecord?.name)
+      : getAgencyLabel(authUser);
+    const validationErrors = [];
 
     setFormErrors([]);
 
     if (validationMessage) {
-      setFormErrors([validationMessage]);
+      validationErrors.push(validationMessage);
+    }
+
+    if (!promoterAgencyId) {
+      validationErrors.push("Agency is required.");
+    }
+
+    if (validationErrors.length) {
+      setFormErrors(validationErrors);
       return;
     }
 
@@ -83,6 +115,7 @@ export default function AddPromoterPage() {
       const response = await createPromoterRequest({
         promoter_id: normalizedPromoterId,
         promo_code: normalizedPromoterId,
+        ...(canChooseAgency ? { agency_id: promoterAgencyId } : {}),
       });
 
       logAddPromoterResult("create promoter response", {
@@ -148,8 +181,8 @@ export default function AddPromoterPage() {
         icon: "success",
         title: "Promoter Added Successfully!",
         text: isPromoterActive
-          ? `${normalizedPromoterId} has been added. Check Promoters List to see newly added promoters.`
-          : `${normalizedPromoterId} has been added as inactive. Check Promoters List to see newly added promoters.`,
+          ? `${normalizedPromoterId} has been added to ${promoterAgencyLabel}. Check Promoters List to see newly added promoters.`
+          : `${normalizedPromoterId} has been added as inactive under ${promoterAgencyLabel}. Check Promoters List to see newly added promoters.`,
         confirmButtonColor: "#22c55e",
       });
     } catch (error) {
@@ -220,6 +253,45 @@ export default function AddPromoterPage() {
             </div>
 
             <FormErrorSummary errors={formErrors} />
+
+            <div className="form-group">
+              {canChooseAgency ? (
+                <SelectInput
+                  id="promoterAgency"
+                  label="Agency"
+                  required
+                  value={selectedAgency}
+                  onChange={(event) => {
+                    setSelectedAgency(event.target.value);
+                    setFormErrors([]);
+                  }}
+                  disabled={isSubmitting || isLoadingAgencies}
+                >
+                  <option value="">
+                    {isLoadingAgencies ? "Loading agencies..." : "Select agency"}
+                  </option>
+                  {agencies
+                    .filter((agency) => agency.isActive)
+                    .map((agency) => (
+                      <option key={agency.id} value={agency.id}>
+                        {agency.name}
+                      </option>
+                    ))}
+                </SelectInput>
+              ) : (
+                <>
+                  <label htmlFor="promoterAgency">Agency</label>
+                  <input
+                    id="promoterAgency"
+                    type="text"
+                    className="promoter-id-input"
+                    value={getAgencyLabel(authUser)}
+                    disabled
+                    readOnly
+                  />
+                </>
+              )}
+            </div>
 
             <div
               className={`status-toggle ${isPromoterActive ? "status-toggle--active" : "status-toggle--inactive"}`}

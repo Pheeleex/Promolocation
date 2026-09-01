@@ -1,6 +1,11 @@
 import { create } from "zustand";
 import { LoginResponse } from "../../types/auth";
 import { persist } from "zustand/middleware";
+import {
+  getAgencyName,
+  normalizeAgencyId,
+  normalizeIsGlobal,
+} from "../utils/agency";
 
 type AuthUser = {
   user_id: number;
@@ -11,6 +16,10 @@ type AuthUser = {
   last_name: string;
   phone: string;
   user_role: string;
+  agency: string;
+  agencyId: string;
+  agencyName: string;
+  isGlobal: boolean;
   avatar: string;
 };
 
@@ -49,6 +58,10 @@ export const useAuthStore = create<AuthState>()(
             last_name: data.last_name,
             phone: data.phone,
             user_role: data.user_role,
+            agency: getAgencyName(data),
+            agencyId: normalizeAgencyId(data.agency_id),
+            agencyName: getAgencyName(data),
+            isGlobal: normalizeIsGlobal(data.is_global),
             avatar: data.avatar,
           },
           accessToken: data.access_token,

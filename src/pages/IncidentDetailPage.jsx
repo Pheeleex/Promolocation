@@ -1,89 +1,75 @@
 import React from "react";
 import { useEffect, useRef, useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useParams } from "react-router-dom";
 import Swal from "sweetalert2";
 import AppLayout from "../components/AppLayout";
 import DataTable from "../components/DataTable";
-import {
-  getIncidentsQueryKey,
-  useIncidents,
-  useUpdateIncidentStatus,
-} from "../hooks/use-incidents";
-import { usePromoters } from "../hooks/use-promoters";
-import {
-  getIncidentAuditTrailQueryKey,
-  useIncidentAuditTrail,
-} from "../hooks/use-incident-audit-trail";
+import { getHelpDeskRequestById } from "../data/helpDeskMock";
 import { useAutoResizeTextarea } from "../hooks/use-auto-resize-textarea";
 import { useAuthStore } from "../store/auth-store";
 import { isSpecialAdminUser } from "../utils/authAccess";
 import { assetPath } from "../utils/assetPath";
 import { formatLongDate, getIncidentStatusColor } from "../utils/formatters";
-import {
-  PROMOTER_CODE_LABEL,
-  REGULAR_ADMIN_TEAM_LABEL,
-  SPECIAL_ADMIN_TEAM_LABEL,
-} from "../utils/uiLabels";
+import { REGULAR_ADMIN_TEAM_LABEL, SPECIAL_ADMIN_TEAM_LABEL } from "../utils/uiLabels";
 
-const ADMIN_INCIDENT_ACTIONS = {
-  Pending: ["In Progress", "On Hold", "Resolved"],
+const ADMIN_REQUEST_ACTIONS = {
+  Submitted: ["In Progress", "On Hold", "Resolved"],
   "In Progress": ["In Progress", "On Hold", "Resolved"],
   "On Hold": ["In Progress", "On Hold", "Resolved"],
   "Not Resolved": ["In Progress", "On Hold", "Resolved"],
 };
 
-const SPECIAL_ADMIN_INCIDENT_ACTIONS = {
+const SPECIAL_ADMIN_REQUEST_ACTIONS = {
   Resolved: ["Not Resolved", "Closed"],
 };
 
-function getAvailableIncidentStatusOptions(currentStatus, isSpecialAdmin) {
+function getAvailableRequestStatusOptions(currentStatus, isSpecialAdmin) {
   if (!currentStatus) {
     return [];
   }
 
   const statusOptions = isSpecialAdmin
-    ? SPECIAL_ADMIN_INCIDENT_ACTIONS
-    : ADMIN_INCIDENT_ACTIONS;
+    ? SPECIAL_ADMIN_REQUEST_ACTIONS
+    : ADMIN_REQUEST_ACTIONS;
 
   return statusOptions[currentStatus] || [];
 }
 
-function getIncidentActionHelperCopy(currentStatus, isSpecialAdmin) {
+function getRequestActionHelperCopy(currentStatus, isSpecialAdmin) {
   if (isSpecialAdmin) {
     switch (currentStatus) {
-      case "Pending":
-        return `This incident is pending ${REGULAR_ADMIN_TEAM_LABEL} review. You can act after ${REGULAR_ADMIN_TEAM_LABEL} resolves it.`;
+      case "Submitted":
+        return `This request is waiting for ${REGULAR_ADMIN_TEAM_LABEL} review. You can act after ${REGULAR_ADMIN_TEAM_LABEL} resolves it.`;
       case "In Progress":
-        return `${REGULAR_ADMIN_TEAM_LABEL} is currently working on this incident. You cannot update it right now.`;
+        return `${REGULAR_ADMIN_TEAM_LABEL} is currently working on this request. You cannot update it right now.`;
       case "On Hold":
-        return `${REGULAR_ADMIN_TEAM_LABEL} has placed this incident on hold. You cannot update it right now.`;
+        return `${REGULAR_ADMIN_TEAM_LABEL} has placed this request on hold. You cannot update it right now.`;
       case "Resolved":
         return `Review the ${REGULAR_ADMIN_TEAM_LABEL} resolution and either confirm it as closed or return it as not resolved.`;
       case "Not Resolved":
-        return `${REGULAR_ADMIN_TEAM_LABEL} must resolve this incident again before you can take another action.`;
+        return `${REGULAR_ADMIN_TEAM_LABEL} must resolve this request again before you can take another action.`;
       case "Closed":
-        return "This incident has been closed and no further action is available.";
+        return "This request has been closed and no further action is available.";
       default:
-        return "Review the current incident status before taking action.";
+        return "Review the current request status before taking action.";
     }
   }
 
   switch (currentStatus) {
-    case "Pending":
-      return "This incident has just been submitted. Move it into progress, place it on hold, or resolve it.";
+    case "Submitted":
+      return "This request has just been submitted. Move it into progress, place it on hold, or resolve it.";
     case "In Progress":
-      return "Continue working the incident, place it on hold, keep it in progress, or mark it resolved when the issue has been handled.";
+      return "Continue working the request, place it on hold, keep it in progress, or mark it resolved when the work has been handled.";
     case "On Hold":
-      return "This incident is currently on hold. Move it back into progress, keep it on hold, or resolve it when work resumes.";
+      return "This request is currently on hold. Move it back into progress, keep it on hold, or resolve it when work resumes.";
     case "Resolved":
-      return `${SPECIAL_ADMIN_TEAM_LABEL} must now review this resolution before the incident can be closed.`;
+      return `${SPECIAL_ADMIN_TEAM_LABEL} must now review this resolution before the request can be closed.`;
     case "Not Resolved":
-      return "The resolution was rejected. Move the incident back to In Progress, place it on hold, or resolve it again.";
+      return "The resolution was rejected. Move the request back to In Progress, place it on hold, or resolve it again.";
     case "Closed":
-      return "This incident has been closed and can no longer be updated.";
+      return "This request has been closed and can no longer be updated.";
     default:
-      return "Select the next status for this incident.";
+      return "Select the next status for this request.";
   }
 }
 
@@ -132,50 +118,42 @@ export default function IncidentDetailPage() {
   const [adminNote, setAdminNote] = useState("");
   const adminCommentTextareaRef = useRef(null);
   const { incidentId } = useParams();
-  const { data: incidents = [], isLoading, isError, error } = useIncidents();
-  const { data: promoters = [] } = usePromoters();
-  const { mutateAsync: updateIncidentStatus, isPending: isUpdatingIncident } =
-    useUpdateIncidentStatus();
+  const [request, setRequest] = useState(() => getHelpDeskRequestById(incidentId));
+  const [auditTrail, setAuditTrail] = useState(() => request?.auditTrail || []);
+  const [isUpdatingRequest, setIsUpdatingRequest] = useState(false);
   const authUser = useAuthStore((state) => state.user);
   const authUserId = authUser?.user_id;
-  const queryClient = useQueryClient();
   const navigate = useNavigate();
-
-  const incident = incidents.find((item) => item.id === incidentId);
-  const incidentPromoterCode =
-    promoters.find((promoter) => promoter.promoterId === incident?.promoterId)
-      ?.promoterCode || "";
-  const { data: auditTrail = [] } = useIncidentAuditTrail(incident);
-  const statusColor = getIncidentStatusColor(incident?.status);
+  const statusColor = getIncidentStatusColor(request?.status);
   const isSpecialAdmin = isSpecialAdminUser(authUser);
-  const availableStatusOptions = getAvailableIncidentStatusOptions(
-    incident?.status,
+  const availableStatusOptions = getAvailableRequestStatusOptions(
+    request?.status,
     isSpecialAdmin,
   );
-  const canUpdateIncident = availableStatusOptions.length > 0;
+  const canUpdateRequest = availableStatusOptions.length > 0;
   const isCommentRequired = selectedStatus === "Not Resolved";
-  const incidentActionHelperCopy = getIncidentActionHelperCopy(
-    incident?.status,
+  const requestActionHelperCopy = getRequestActionHelperCopy(
+    request?.status,
     isSpecialAdmin,
   );
-  const incidentActionTitle = isSpecialAdmin ? "Incident Review" : "Incident Action";
+  const requestActionTitle = isSpecialAdmin ? "Requester Review" : "Request Action";
 
   useAutoResizeTextarea(adminCommentTextareaRef, adminNote);
 
   useEffect(() => {
     setHasImageError(false);
-  }, [incident?.image]);
+  }, [request?.image]);
 
   useEffect(() => {
-    if (!incident) {
+    if (!request) {
       setSelectedStatus("");
       setAdminNote("");
       return;
     }
 
     setSelectedStatus("");
-    setAdminNote(canUpdateIncident ? "" : incident.adminNote || "");
-  }, [incident, canUpdateIncident]);
+    setAdminNote(canUpdateRequest ? "" : request.adminNote || "");
+  }, [request, canUpdateRequest]);
 
   useEffect(() => {
     if (!isLightboxOpen) {
@@ -199,54 +177,18 @@ export default function IncidentDetailPage() {
     };
   }, [isLightboxOpen]);
 
-  if (isLoading) {
+  if (!request) {
     return (
       <AppLayout activeNav="incidents" mainContentClassName="detail-main">
         <div className="detail-wrapper">
           <button type="button" className="back-btn" onClick={() => navigate("/incidents")}>
             <BackArrow />
-            Back to Incident History
+            Back to Help Desk
           </button>
           <div className="incident-card">
-            <h1 className="page-title">Incident Details</h1>
-            <p className="detail-empty-copy">Loading incident details...</p>
-          </div>
-        </div>
-      </AppLayout>
-    );
-  }
-
-  if (isError) {
-    return (
-      <AppLayout activeNav="incidents" mainContentClassName="detail-main">
-        <div className="detail-wrapper">
-          <button type="button" className="back-btn" onClick={() => navigate("/incidents")}>
-            <BackArrow />
-            Back to Incident History
-          </button>
-          <div className="incident-card">
-            <h1 className="page-title">Incident Details</h1>
+            <h1 className="page-title">Request Details</h1>
             <p className="detail-empty-copy">
-              {error?.message || "We couldn't load this incident right now."}
-            </p>
-          </div>
-        </div>
-      </AppLayout>
-    );
-  }
-
-  if (!incident) {
-    return (
-      <AppLayout activeNav="incidents" mainContentClassName="detail-main">
-        <div className="detail-wrapper">
-          <button type="button" className="back-btn" onClick={() => navigate("/incidents")}>
-            <BackArrow />
-            Back to Incident History
-          </button>
-          <div className="incident-card">
-            <h1 className="page-title">Incident Details</h1>
-            <p className="detail-empty-copy">
-              We couldn't find that incident anymore. It may have been removed or the
+              We couldn't find that request anymore. It may have been removed or the
               link is no longer valid.
             </p>
           </div>
@@ -255,17 +197,17 @@ export default function IncidentDetailPage() {
     );
   }
 
-  const imageSource = incident.image ? assetPath(incident.image) : null;
+  const imageSource = request.image ? assetPath(request.image) : null;
   const trimmedAdminNote = adminNote.trim();
 
   const handleStatusUpdate = async (event) => {
     event.preventDefault();
 
-    if (!canUpdateIncident) {
+    if (!canUpdateRequest) {
       await Swal.fire({
         icon: "info",
         title: "No Action Available",
-        text: incidentActionHelperCopy,
+        text: requestActionHelperCopy,
         confirmButtonColor: "#0E2B63",
       });
       return;
@@ -285,51 +227,57 @@ export default function IncidentDetailPage() {
       Swal.fire({
         icon: "error",
         title: "Comment Required",
-        text: "Add a comment before marking this incident as not resolved.",
+        text: "Add a comment before marking this request as not resolved.",
         confirmButtonColor: "#d33",
       });
       return;
     }
 
     try {
-      await updateIncidentStatus({
-        incident_id: incident.id,
-        status: selectedStatus,
-        comment: trimmedAdminNote || undefined,
-      });
+      setIsUpdatingRequest(true);
+      const actionLabel =
+        selectedStatus === "Closed"
+          ? "Closed request"
+          : selectedStatus === "Not Resolved"
+            ? "Marked request Not Resolved"
+            : `Marked request ${selectedStatus}`;
 
-      queryClient.setQueryData(
-        getIncidentsQueryKey(authUserId ? String(authUserId) : ""),
-        (currentIncidents = []) =>
-          currentIncidents.map((currentIncident) =>
-            currentIncident.id === incident.id
-              ? {
-                  ...currentIncident,
-                  status: selectedStatus,
-                  adminNote: trimmedAdminNote || null,
-                }
-              : currentIncident,
-          ),
-      );
-      queryClient.invalidateQueries({
-        queryKey: getIncidentAuditTrailQueryKey(incident.id),
-      });
+      setRequest((currentRequest) => ({
+        ...currentRequest,
+        status: selectedStatus,
+        adminNote: trimmedAdminNote || currentRequest.adminNote,
+        resolutionSummary:
+          selectedStatus === "Resolved"
+            ? trimmedAdminNote || currentRequest.resolutionSummary
+            : currentRequest.resolutionSummary,
+      }));
+      setAuditTrail((currentTrail) => [
+        {
+          id: `AUD-${Date.now()}`,
+          userId: authUserId ? String(authUserId) : "mock-user",
+          action: actionLabel,
+          comment: trimmedAdminNote || null,
+          dateTime: new Date().toISOString(),
+        },
+        ...currentTrail,
+      ]);
 
       await Swal.fire({
-        title: "Incident Updated",
-        text: "The incident status and comment have been saved.",
+        title: "Request Updated",
+        text: "This prototype updated the request locally so you can review the flow.",
         icon: "success",
         confirmButtonColor: "#0E2B63",
       });
 
-      navigate("/incidents", { replace: true });
     } catch (updateError) {
       await Swal.fire({
-        title: "Unable to Update Incident",
+        title: "Unable to Update Request",
         text: updateError?.message || "Something went wrong.",
         icon: "error",
         confirmButtonColor: "#d33",
       });
+    } finally {
+      setIsUpdatingRequest(false);
     }
   };
 
@@ -338,28 +286,32 @@ export default function IncidentDetailPage() {
       <div className="detail-wrapper">
         <button type="button" className="back-btn" onClick={() => navigate("/incidents")}>
           <BackArrow />
-          Back to Incident History
+          Back to Help Desk
         </button>
 
-        <h1 className="page-title">Incident Details</h1>
+        <h1 className="page-title">Request Details</h1>
 
         <div className="incident-card">
           <div className="incident-top">
             <div className="report-section">
-              <h3 className="card-section-title">Incident Report:</h3>
+              <h3 className="card-section-title">Request Summary:</h3>
               <div className="report-rows">
                 <div className="report-row">
-                  <span className="row-label">{PROMOTER_CODE_LABEL}:</span>
-                  <span className="row-value">{incidentPromoterCode || "—"}</span>
+                  <span className="row-label">Request ID:</span>
+                  <span className="row-value">{request.id}</span>
+                </div>
+                <div className="report-row">
+                  <span className="row-label">Type:</span>
+                  <span className="row-value">{request.requestTypeLabel}</span>
                 </div>
                 <div className="report-row">
                   <span className="row-label">Date &amp; Time:</span>
-                  <span className="row-value">{formatLongDate(incident.date)}</span>
+                  <span className="row-value">{formatLongDate(request.date)}</span>
                 </div>
                 <div className="report-row">
                   <span className="row-label">Current Status:</span>
                   <span className="row-value status-value">
-                    <span>{incident.status || "—"}</span>
+                    <span>{request.status || "—"}</span>
                     <span
                       className="status-dot"
                       style={{ backgroundColor: statusColor }}
@@ -367,14 +319,14 @@ export default function IncidentDetailPage() {
                   </span>
                 </div>
                 <div className="report-row last-row">
-                  <span className="row-label">Incident Issue:</span>
-                  <span className="row-value">{incident.issue || "—"}</span>
+                  <span className="row-label">Priority:</span>
+                  <span className="row-value">{request.priority || "—"}</span>
                 </div>
               </div>
             </div>
 
             <div className="photo-section">
-              <h3 className="card-section-title">Photo:</h3>
+              <h3 className="card-section-title">Attachment:</h3>
               <div
                 className="photo-frame"
                 role={imageSource && !hasImageError ? "button" : undefined}
@@ -394,7 +346,7 @@ export default function IncidentDetailPage() {
                 {imageSource && !hasImageError ? (
                   <img
                     src={imageSource}
-                    alt={`Incident photo for ${PROMOTER_CODE_LABEL.toLowerCase()} ${incidentPromoterCode || incident.id}`}
+                    alt={`Attachment for request ${request.id}`}
                     onError={() => setHasImageError(true)}
                   />
                 ) : (
@@ -407,32 +359,72 @@ export default function IncidentDetailPage() {
           <hr className="section-divider" />
 
           <div className="description-section">
-            <h3 className="card-section-title">Description:</h3>
+            <h3 className="card-section-title">Request:</h3>
+            <div className="report-rows">
+              <div className="report-row">
+                <span className="row-label">Requester:</span>
+                <span className="row-value">{request.requesterName || "—"}</span>
+              </div>
+              <div className="report-row">
+                <span className="row-label">Agency:</span>
+                <span className="row-value">{request.agencyName || "—"}</span>
+              </div>
+              <div className="report-row last-row">
+                <span className="row-label">Category:</span>
+                <span className="row-value">{request.category || "—"}</span>
+              </div>
+            </div>
             <div className="description-box">
-              <p>{incident.description || "—"}</p>
+              <p>{request.description || "—"}</p>
             </div>
           </div>
 
           <hr className="section-divider" />
 
           <div className="description-section">
-            <h3 className="card-section-title">{incidentActionTitle}:</h3>
-            <p style={{ marginBottom: "16px", color: "#64748b" }}>{incidentActionHelperCopy}</p>
+            <h3 className="card-section-title">Affected Records:</h3>
+            <div className="description-box">
+              {(request.affectedRecords || []).length ? (
+                request.affectedRecords.map((record) => <p key={record}>{record}</p>)
+              ) : (
+                <p>—</p>
+              )}
+            </div>
+          </div>
+
+          {request.resolutionSummary ? (
+            <>
+              <hr className="section-divider" />
+
+              <div className="description-section">
+                <h3 className="card-section-title">Resolution Summary:</h3>
+                <div className="description-box">
+                  <p>{request.resolutionSummary}</p>
+                </div>
+              </div>
+            </>
+          ) : null}
+
+          <hr className="section-divider" />
+
+          <div className="description-section">
+            <h3 className="card-section-title">{requestActionTitle}:</h3>
+            <p style={{ marginBottom: "16px", color: "#64748b" }}>{requestActionHelperCopy}</p>
             <form className="incident-action-form" onSubmit={handleStatusUpdate} noValidate>
               <div className="incident-action-grid">
                 <div className="incident-input-group">
                   <label htmlFor="incidentStatus">
                     Update Status
-                    {canUpdateIncident ? <span className="required-mark">*</span> : null}
+                    {canUpdateRequest ? <span className="required-mark">*</span> : null}
                   </label>
                   <select
                     id="incidentStatus"
                     value={selectedStatus}
-                    disabled={isUpdatingIncident || !canUpdateIncident}
+                    disabled={isUpdatingRequest || !canUpdateRequest}
                     onChange={(event) => setSelectedStatus(event.target.value)}
                   >
                     <option value="" disabled>
-                      {canUpdateIncident ? "Select status" : "No actions available"}
+                      {canUpdateRequest ? "Select status" : "No actions available"}
                     </option>
                     {availableStatusOptions.map((statusOption) => (
                       <option key={statusOption} value={statusOption}>
@@ -452,12 +444,12 @@ export default function IncidentDetailPage() {
                     ref={adminCommentTextareaRef}
                     rows="5"
                     placeholder={
-                      canUpdateIncident
+                      canUpdateRequest
                         ? "Add a comment..."
-                        : "No update is available for the current incident state."
+                        : "No update is available for the current request state."
                     }
                     value={adminNote}
-                    disabled={isUpdatingIncident || !canUpdateIncident}
+                    disabled={isUpdatingRequest || !canUpdateRequest}
                     onChange={(event) => setAdminNote(event.target.value)}
                   />
                 </div>
@@ -467,11 +459,11 @@ export default function IncidentDetailPage() {
                 <button
                   type="submit"
                   className="resolve-btn"
-                  disabled={isUpdatingIncident || !canUpdateIncident || !selectedStatus}
+                  disabled={isUpdatingRequest || !canUpdateRequest || !selectedStatus}
                 >
-                  {isUpdatingIncident
+                  {isUpdatingRequest
                     ? "Saving..."
-                    : canUpdateIncident
+                    : canUpdateRequest
                       ? "Save Update"
                       : "No Action Available"}
                 </button>
@@ -484,7 +476,7 @@ export default function IncidentDetailPage() {
           <div className="description-section">
             <h3 className="card-section-title">Audit Trail:</h3>
             <p className="audit-trail-copy">
-              Every incident action is recorded here so the full review history stays visible.
+              Every request action is recorded here so the full review history stays visible.
             </p>
 
             <DataTable
@@ -510,8 +502,8 @@ export default function IncidentDetailPage() {
                   render: (auditEntry) => formatLongDate(auditEntry.dateTime),
                 },
               ]}
-              dependencies={[incident?.id, auditTrail.length]}
-              emptyMessage="No audit entries have been recorded for this incident yet."
+              dependencies={[request?.id, auditTrail.length]}
+              emptyMessage="No audit entries have been recorded for this request yet."
               footerClassName="card-footer audit-trail-footer"
               getRowKey={(auditEntry) => auditEntry.id}
               items={auditTrail}
@@ -541,7 +533,7 @@ export default function IncidentDetailPage() {
             >
               &#x2715;
             </button>
-            <img src={imageSource} alt="Incident Photo" />
+            <img src={imageSource} alt="Request attachment" />
           </div>
         </div>
       ) : null}

@@ -4,7 +4,7 @@ This document is the shared frontend/backend contract for promotion statuses, da
 
 ## Core Principle
 
-Promotions are day-based. Only one promotion can be live at any time.
+Promotions are day-based. Only one promotion can be live per agency at any time.
 
 `is_active = 1` must only mean the promotion is live right now. Scheduled, inactive, and expired promotions must always have `is_active = 0`.
 
@@ -40,7 +40,7 @@ Backend should derive the saved status from the dates:
 - If `start_date` is in the future, create as `scheduled` with `is_active = 0`.
 - If `end_date` is in the past, create as `expired` with `is_active = 0` for historical records.
 
-When creating a promotion that will become `active` or `scheduled`, overlap validation must check only against existing `active` and `scheduled` promotions.
+When creating a promotion that will become `active` or `scheduled`, overlap validation must check only against existing `active` and `scheduled` promotions in the same agency.
 
 When creating a promotion that will become `expired`, overlap validation should not block it because expired promotions do not reserve active windows.
 
@@ -48,7 +48,7 @@ When creating a promotion that will become `expired`, overlap validation should 
 
 Frontend may show status on edit.
 
-When editing a promotion into `active` or `scheduled`, or editing the dates of an existing `active` or `scheduled` promotion, overlap validation must check only against other `active` and `scheduled` promotions.
+When editing a promotion into `active` or `scheduled`, or editing the dates of an existing `active` or `scheduled` promotion, overlap validation must check only against other `active` and `scheduled` promotions in the same agency.
 
 When editing a promotion into `inactive`, overlap validation should not run.
 
@@ -58,14 +58,15 @@ The promotion being edited must not be compared against itself.
 
 ## Date Overlap Rule
 
-Only `active` and `scheduled` promotions reserve date windows.
+Only `active` and `scheduled` promotions reserve date windows inside their own agency.
 
 Inactive, expired, and legacy draft promotions must not be considered blockers.
 
 Two reserving promotion windows overlap when:
 
 ```text
-promotion_a.start_date <= promotion_b.end_date
+promotion_a.agency = promotion_b.agency
+AND promotion_a.start_date <= promotion_b.end_date
 AND
 promotion_a.end_date >= promotion_b.start_date
 ```
@@ -91,7 +92,7 @@ Frontend should validate:
 - Start date is required.
 - End date is required.
 - End date must be after start date.
-- A create/edit that resolves to `active` or `scheduled` must not overlap another `active` or `scheduled` promotion.
+- A create/edit that resolves to `active` or `scheduled` must not overlap another `active` or `scheduled` promotion in the same agency.
 - A create/edit that resolves to `inactive` or `expired` should not be blocked by date overlap.
 - Existing `inactive`, `expired`, or legacy `draft` promotions should be ignored during overlap checks.
 - A promotion being edited should not be compared against itself.
@@ -100,13 +101,13 @@ Frontend should validate:
 
 Backend should enforce:
 
-- There can never be more than one `active` promotion with `is_active = 1`.
+- There can never be more than one `active` promotion with `is_active = 1` in the same agency.
 - `is_active = 1` is only valid when `status = active`.
 - `scheduled`, `inactive`, and `expired` must always have `is_active = 0`.
 - `draft` should not be stored for new promotions.
 - Any existing `draft` promotion should be normalized or treated as `inactive`.
 - Empty `status` values should not be stored. If status is missing, backend should derive or normalize it.
-- Date overlaps should be checked against `active` and `scheduled` promotions only.
+- Date overlaps should be checked against `active` and `scheduled` promotions in the same agency only.
 - `inactive`, `expired`, and legacy `draft` promotions should not block date windows.
 
 ## Scheduled Activation
@@ -117,8 +118,8 @@ Recommended flow:
 
 1. Expire any active promotion whose `end_date` has passed.
 2. Find scheduled promotions whose `start_date` is today.
-3. Before activating, verify no other promotion is active.
-4. Verify the promotion does not conflict with another `active` or `scheduled` promotion.
+3. Before activating, verify no other promotion in the same agency is active.
+4. Verify the promotion does not conflict with another `active` or `scheduled` promotion in the same agency.
 5. Set the eligible promotion to:
 
 ```text
@@ -139,4 +140,3 @@ is_active = 0
 - Promotion assignment management should be available for `active` and `scheduled` promotions only.
 - `inactive`, `expired`, and legacy `draft` promotions should not be manageable.
 - Create promotion should remain visible even when there is an active promotion, because users can create future scheduled promotions as long as dates do not overlap an active or scheduled promotion.
-
