@@ -17,7 +17,6 @@ const STATUS_FILTERS = [
   "Submitted",
   "In Progress",
   "Resolved",
-  "Not Resolved",
   "Closed",
 ];
 
@@ -88,9 +87,13 @@ export default function IncidentHistoryPage() {
     ? requestSummary.Resolved || 0
     : (requestSummary.Submitted || 0) + (requestSummary["Not Resolved"] || 0);
   const actionRequiredCopy = canCreateRequest
-    ? "resolved requests awaiting requester review"
-    : "requests awaiting team action";
+    ? `${actionRequiredCount === 1 ? "resolved request" : "resolved requests"} awaiting your review`
+    : `${actionRequiredCount === 1 ? "request" : "requests"} awaiting team action`;
   const hasActiveFilters = requestType !== "all" || status !== "all" || Boolean(searchTerm);
+  const resultCountLabel =
+    hasActiveFilters && filteredRequests.length !== mockHelpDeskRequests.length
+      ? `${filteredRequests.length} ${filteredRequests.length === 1 ? "result" : "results"}`
+      : null;
   const clearFilters = () => {
     setSearchTerm("");
     setRequestType("all");
@@ -102,8 +105,9 @@ export default function IncidentHistoryPage() {
       <div className="main-card help-desk-card">
         <div className="card-header help-desk-header">
           <div>
-            <p className="brands-admin-eyebrow">Help Desk</p>
-            <h2>Requests</h2>
+            <h2>
+              Requests <span>· {mockHelpDeskRequests.length}</span>
+            </h2>
             <p>Review incidents, setup needs, access changes, and follow-up decisions.</p>
           </div>
           <div className="help-desk-header-actions">
@@ -125,32 +129,17 @@ export default function IncidentHistoryPage() {
           </div>
         </div>
 
-        <div className="help-desk-summary-strip">
-          {["Submitted", "In Progress", "Resolved", "Closed"].map((statusOption) => {
-            const statusColor = getIncidentStatusColor(statusOption);
-
-            return (
-              <button
-                type="button"
-                key={statusOption}
-                className={`help-desk-summary-item${status === statusOption ? " is-selected" : ""}`}
-                onClick={() => setStatus(status === statusOption ? "all" : statusOption)}
-              >
-                <span className="help-desk-summary-dot" style={{ backgroundColor: statusColor }} />
-                <span>{statusOption}</span>
-                <strong>{requestSummary[statusOption] || 0}</strong>
-              </button>
-            );
-          })}
-        </div>
-
         {actionRequiredCount > 0 ? (
-          <div className="help-desk-attention-bar">
-            <strong>Action required</strong>
+          <button
+            type="button"
+            className="help-desk-attention-note"
+            onClick={() => setStatus(canCreateRequest ? "Resolved" : "Submitted")}
+          >
+            <span className="help-desk-attention-dot" aria-hidden="true" />
             <span>
               {actionRequiredCount} {actionRequiredCopy}
             </span>
-          </div>
+          </button>
         ) : null}
 
         <div className="help-desk-toolbar">
@@ -167,7 +156,12 @@ export default function IncidentHistoryPage() {
                   onClick={() => setStatus(statusOption)}
                   style={isAllFilter ? undefined : { "--chip-color": statusColor }}
                 >
-                  {isAllFilter ? "All" : statusOption}
+                  <span>{isAllFilter ? "All" : statusOption}</span>
+                  <strong>
+                    {isAllFilter
+                      ? mockHelpDeskRequests.length
+                      : requestSummary[statusOption] || 0}
+                  </strong>
                 </button>
               );
             })}
@@ -177,7 +171,7 @@ export default function IncidentHistoryPage() {
             <label className="filter-field">
               <span>Request Type</span>
               <select value={requestType} onChange={(event) => setRequestType(event.target.value)}>
-                <option value="all">All request types</option>
+                <option value="all">All types</option>
                 {HELP_DESK_REQUEST_TYPES.map((type) => (
                   <option key={type.value} value={type.value}>
                     {type.label}
@@ -186,44 +180,22 @@ export default function IncidentHistoryPage() {
               </select>
             </label>
 
-            <button
-              type="button"
-              className="brand-admin-secondary-btn"
-              onClick={clearFilters}
-              disabled={!hasActiveFilters}
-            >
-              Clear
-            </button>
+            {hasActiveFilters ? (
+              <button
+                type="button"
+                className="brand-admin-secondary-btn"
+                onClick={clearFilters}
+              >
+                Clear filters
+              </button>
+            ) : null}
           </div>
 
-          <span className="brands-admin-count">
-            {filteredRequests.length} of {mockHelpDeskRequests.length} requests
-          </span>
+          {resultCountLabel ? <span className="brands-admin-count">{resultCountLabel}</span> : null}
         </div>
 
         <DataTable
           columns={[
-            {
-              header: "Status",
-              key: "status",
-              headerClassName: "help-desk-status-col",
-              cellClassName: "help-desk-status-col",
-              render: (request) => (
-                <span
-                  className="status-pill help-desk-status-pill"
-                  style={{
-                    color: getIncidentStatusColor(request.status),
-                    backgroundColor: `${getIncidentStatusColor(request.status)}20`,
-                  }}
-                >
-                  <span
-                    className="help-desk-status-dot"
-                    style={{ backgroundColor: getIncidentStatusColor(request.status) }}
-                  />
-                  {request.status}
-                </span>
-              ),
-            },
             {
               header: "Request",
               key: "request",
@@ -268,6 +240,27 @@ export default function IncidentHistoryPage() {
                 </span>
               ),
             },
+            {
+              header: "Status",
+              key: "status",
+              headerClassName: "help-desk-status-col",
+              cellClassName: "help-desk-status-col",
+              render: (request) => (
+                <span
+                  className="status-pill help-desk-status-pill"
+                  style={{
+                    color: getIncidentStatusColor(request.status),
+                    backgroundColor: `${getIncidentStatusColor(request.status)}14`,
+                  }}
+                >
+                  <span
+                    className="help-desk-status-dot"
+                    style={{ backgroundColor: getIncidentStatusColor(request.status) }}
+                  />
+                  {request.status}
+                </span>
+              ),
+            },
           ]}
           dependencies={[searchTerm, requestType, status, filteredRequests.length]}
           emptyMessage="No help desk requests match your filters."
@@ -275,7 +268,6 @@ export default function IncidentHistoryPage() {
           items={filteredRequests}
           rowProps={(request) => ({
             className: "clickable-row help-desk-row",
-            style: { "--request-status-color": getIncidentStatusColor(request.status) },
             role: "link",
             tabIndex: 0,
             onClick: () => navigate(`/incidents/${request.id}`),

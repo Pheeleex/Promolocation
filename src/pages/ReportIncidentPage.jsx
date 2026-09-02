@@ -4,9 +4,42 @@ import Swal from "sweetalert2";
 import AppLayout from "../components/AppLayout";
 import { HELP_DESK_REQUEST_TYPES } from "../data/helpDeskMock";
 import { useAutoResizeTextarea } from "../hooks/use-auto-resize-textarea";
-import { validateImageUpload } from "../utils/imageUploadValidation";
+import {
+  validateFileSize,
+  validateImageUpload,
+} from "../utils/imageUploadValidation";
 
 const PRIORITY_OPTIONS = ["Low", "Medium", "High", "Urgent"];
+const DOCUMENT_ACCEPT = ".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt";
+const DOCUMENT_EXTENSIONS = ["pdf", "doc", "docx", "xls", "xlsx", "csv", "txt"];
+const DOCUMENT_MIME_TYPES = [
+  "application/pdf",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "application/vnd.ms-excel",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  "text/csv",
+  "text/plain",
+];
+
+function validateDocumentUpload(file) {
+  if (!file) {
+    return null;
+  }
+
+  const normalizedMimeType = typeof file.type === "string" ? file.type.toLowerCase() : "";
+  const normalizedFileName = typeof file.name === "string" ? file.name.toLowerCase() : "";
+  const hasAllowedExtension = DOCUMENT_EXTENSIONS.some((extension) =>
+    normalizedFileName.endsWith(`.${extension}`),
+  );
+  const hasAllowedMimeType = DOCUMENT_MIME_TYPES.includes(normalizedMimeType);
+
+  if (!hasAllowedExtension && !hasAllowedMimeType) {
+    return "Only PDF, Word, Excel, CSV, or text documents are allowed for this request.";
+  }
+
+  return validateFileSize(file, "Document");
+}
 
 function getMissingRequestFields({ requestType, title, description }) {
   const missingFields = [];
@@ -41,6 +74,14 @@ export default function ReportIncidentPage() {
   const selectedRequestType = HELP_DESK_REQUEST_TYPES.find(
     (type) => type.value === requestType,
   );
+  const isIncidentReport = requestType === "incident_report";
+  const attachmentAccept = isIncidentReport ? "image/*" : DOCUMENT_ACCEPT;
+  const attachmentPrompt = isIncidentReport
+    ? "Tap to upload incident image"
+    : "Tap to upload supporting document";
+  const attachmentSubtext = isIncidentReport
+    ? "JPG, PNG or WEBP (Max 3MB)"
+    : "PDF, DOCX, XLSX, CSV or TXT (Max 3MB)";
 
   useAutoResizeTextarea(descriptionTextareaRef, description);
 
@@ -53,6 +94,14 @@ export default function ReportIncidentPage() {
     }
   };
 
+  const handleRequestTypeChange = (nextRequestType) => {
+    if (nextRequestType !== requestType) {
+      resetSelectedImage();
+    }
+
+    setRequestType(nextRequestType);
+  };
+
   const handleImageChange = (event) => {
     const file = event.target.files?.[0];
 
@@ -60,13 +109,15 @@ export default function ReportIncidentPage() {
       return;
     }
 
-    const validationError = validateImageUpload(file);
+    const validationError = isIncidentReport
+      ? validateImageUpload(file)
+      : validateDocumentUpload(file);
 
     if (validationError) {
       resetSelectedImage();
       Swal.fire({
         icon: "error",
-        title: "Invalid Attachment",
+        title: isIncidentReport ? "Invalid Image" : "Invalid Document",
         text: validationError,
         confirmButtonColor: "#d33",
       });
@@ -104,14 +155,16 @@ export default function ReportIncidentPage() {
     }
 
     if (image) {
-      const imageValidationError = validateImageUpload(image);
+      const attachmentValidationError = isIncidentReport
+        ? validateImageUpload(image)
+        : validateDocumentUpload(image);
 
-      if (imageValidationError) {
+      if (attachmentValidationError) {
         resetSelectedImage();
         Swal.fire({
           icon: "error",
-          title: "Invalid Attachment",
-          text: imageValidationError,
+          title: isIncidentReport ? "Invalid Image" : "Invalid Document",
+          text: attachmentValidationError,
           confirmButtonColor: "#d33",
         });
         return;
@@ -162,7 +215,7 @@ export default function ReportIncidentPage() {
                   type="button"
                   key={type.value}
                   className={`request-type-option${requestType === type.value ? " is-selected" : ""}`}
-                  onClick={() => setRequestType(type.value)}
+                  onClick={() => handleRequestTypeChange(type.value)}
                   disabled={isSubmitting}
                 >
                   <span>{type.label}</span>
@@ -244,7 +297,7 @@ export default function ReportIncidentPage() {
                 <div className="input-field-group">
                   <label>Attachment</label>
                   <div
-                    className={`premium-upload-zone ${preview ? "has-image" : ""}`}
+                    className={`premium-upload-zone ${preview ? "has-image" : ""} ${image && !preview ? "has-file" : ""}`}
                     onClick={() => !isSubmitting && fileInputRef.current.click()}
                   >
                     {preview ? (
@@ -258,6 +311,19 @@ export default function ReportIncidentPage() {
                           <span>Change Attachment</span>
                         </div>
                       </>
+                    ) : image ? (
+                      <div className="upload-file-state">
+                        <div className="upload-icon-circle">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                            <polyline points="14 2 14 8 20 8" />
+                            <line x1="8" y1="13" x2="16" y2="13" />
+                            <line x1="8" y1="17" x2="16" y2="17" />
+                          </svg>
+                        </div>
+                        <p className="upload-prompt">{image.name}</p>
+                        <p className="upload-subtext">Tap to replace document</p>
+                      </div>
                     ) : (
                       <div className="upload-empty-state">
                         <div className="upload-icon-circle">
@@ -267,15 +333,15 @@ export default function ReportIncidentPage() {
                             <line x1="12" y1="3" x2="12" y2="15" />
                           </svg>
                         </div>
-                        <p className="upload-prompt">Tap to upload support file</p>
-                        <p className="upload-subtext">JPG, PNG or WEBP (Max 5MB)</p>
+                        <p className="upload-prompt">{attachmentPrompt}</p>
+                        <p className="upload-subtext">{attachmentSubtext}</p>
                       </div>
                     )}
                     <input
                       type="file"
                       ref={fileInputRef}
                       onChange={handleImageChange}
-                      accept="image/*"
+                      accept={attachmentAccept}
                       style={{ display: "none" }}
                     />
                   </div>
@@ -457,12 +523,33 @@ export default function ReportIncidentPage() {
           border-color: #e2e8f0;
         }
 
+        .premium-upload-zone.has-file {
+          border-style: solid;
+          border-color: #e2e8f0;
+        }
+
         .upload-empty-state {
           display: flex;
           flex-direction: column;
           align-items: center;
           text-align: center;
           padding: 20px;
+        }
+
+        .upload-file-state {
+          display: flex;
+          max-width: 100%;
+          flex-direction: column;
+          align-items: center;
+          text-align: center;
+          padding: 20px;
+        }
+
+        .upload-file-state .upload-prompt {
+          max-width: 260px;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
         }
 
         .upload-icon-circle {
