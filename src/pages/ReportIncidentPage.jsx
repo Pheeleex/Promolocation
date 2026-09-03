@@ -9,7 +9,7 @@ import {
   validateImageUpload,
 } from "../utils/imageUploadValidation";
 
-const PRIORITY_OPTIONS = ["Low", "Medium", "High", "Urgent"];
+const PRIORITY_OPTIONS = ["Low", "Medium", "High"];
 const DOCUMENT_ACCEPT = ".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt";
 const DOCUMENT_EXTENSIONS = ["pdf", "doc", "docx", "xls", "xlsx", "csv", "txt"];
 const DOCUMENT_MIME_TYPES = [
@@ -27,8 +27,10 @@ function validateDocumentUpload(file) {
     return null;
   }
 
-  const normalizedMimeType = typeof file.type === "string" ? file.type.toLowerCase() : "";
-  const normalizedFileName = typeof file.name === "string" ? file.name.toLowerCase() : "";
+  const normalizedMimeType =
+    typeof file.type === "string" ? file.type.toLowerCase() : "";
+  const normalizedFileName =
+    typeof file.name === "string" ? file.name.toLowerCase() : "";
   const hasAllowedExtension = DOCUMENT_EXTENSIONS.some((extension) =>
     normalizedFileName.endsWith(`.${extension}`),
   );
@@ -63,7 +65,6 @@ export default function ReportIncidentPage() {
   const [requestType, setRequestType] = useState("incident_report");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [agency, setAgency] = useState("");
   const [priority, setPriority] = useState("Medium");
   const [image, setImage] = useState(null);
   const [preview, setPreview] = useState(null);
@@ -192,7 +193,9 @@ export default function ReportIncidentPage() {
       Swal.fire({
         icon: "error",
         title: "Submission Failed",
-        text: error?.message || "Something went wrong while submitting the request.",
+        text:
+          error?.message ||
+          "Something went wrong while submitting the request.",
       });
     } finally {
       setIsSubmitting(false);
@@ -204,24 +207,51 @@ export default function ReportIncidentPage() {
       <div className="report-page-wrapper">
         <div className="report-header">
           <h1>New Help Desk Request</h1>
-          <p>Submit incidents, access changes, setup needs, and operational support requests.</p>
+          <p>
+            Submit incidents, change requests, access requests, and operational
+            support needs.
+          </p>
         </div>
 
         <div className="report-card-container">
-          <form onSubmit={handleSubmit} className="report-form-premium" noValidate>
-            <div className="request-type-panel">
-              {HELP_DESK_REQUEST_TYPES.map((type) => (
-                <button
-                  type="button"
-                  key={type.value}
-                  className={`request-type-option${requestType === type.value ? " is-selected" : ""}`}
-                  onClick={() => handleRequestTypeChange(type.value)}
-                  disabled={isSubmitting}
-                >
-                  <span>{type.label}</span>
-                  <small>{type.description}</small>
-                </button>
-              ))}
+          <form
+            onSubmit={handleSubmit}
+            className="report-form-premium"
+            noValidate
+          >
+            <div className="request-type-guide" aria-labelledby="request-type-guide-label">
+              <p className="request-type-guide-label" id="request-type-guide-label">
+                Request type guide
+              </p>
+              <div className="request-type-guide-grid">
+                {HELP_DESK_REQUEST_TYPES.map((type) => (
+                  <div className="request-type-guide-card" key={type.value}>
+                    <h3>{type.label}</h3>
+                    <p>{type.description}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="input-field-group request-type-field">
+              <label htmlFor="request-type">
+                Request Type <span className="required-mark">*</span>
+              </label>
+              <select
+                id="request-type"
+                value={requestType}
+                onChange={(event) =>
+                  handleRequestTypeChange(event.target.value)
+                }
+                disabled={isSubmitting}
+                className="premium-input-field"
+              >
+                {HELP_DESK_REQUEST_TYPES.map((type) => (
+                  <option key={type.value} value={type.value}>
+                    {type.label}
+                  </option>
+                ))}
+              </select>
             </div>
 
             <div className="report-form-grid">
@@ -234,9 +264,11 @@ export default function ReportIncidentPage() {
                     id="request-title"
                     type="text"
                     placeholder={
-                      selectedRequestType?.value === "setup_request"
-                        ? "Example: Add new agency and promoter batch"
-                        : "Use a descriptive title that summarizes the request."
+                      selectedRequestType?.value === "change_request"
+                        ? "Example: Update promotion dates for Zipline"
+                        : selectedRequestType?.value === "access_request"
+                          ? "Example: Grant Zipline admin access"
+                          : "Use a descriptive title that summarizes the request."
                     }
                     value={title}
                     onChange={(event) => setTitle(event.target.value)}
@@ -262,19 +294,6 @@ export default function ReportIncidentPage() {
 
                 <div className="request-meta-grid">
                   <div className="input-field-group">
-                    <label htmlFor="request-agency">Related Agency</label>
-                    <input
-                      id="request-agency"
-                      type="text"
-                      placeholder="Example: Zipline, Skyline, or All Agencies"
-                      value={agency}
-                      onChange={(event) => setAgency(event.target.value)}
-                      disabled={isSubmitting}
-                      className="premium-input-field"
-                    />
-                  </div>
-
-                  <div className="input-field-group">
                     <label htmlFor="request-priority">Priority</label>
                     <select
                       id="request-priority"
@@ -298,13 +317,24 @@ export default function ReportIncidentPage() {
                   <label>Attachment</label>
                   <div
                     className={`premium-upload-zone ${preview ? "has-image" : ""} ${image && !preview ? "has-file" : ""}`}
-                    onClick={() => !isSubmitting && fileInputRef.current.click()}
+                    onClick={() =>
+                      !isSubmitting && fileInputRef.current.click()
+                    }
                   >
                     {preview ? (
                       <>
-                        <img src={preview} alt="Request attachment preview" className="evidence-preview-img" />
+                        <img
+                          src={preview}
+                          alt="Request attachment preview"
+                          className="evidence-preview-img"
+                        />
                         <div className="upload-overlay">
-                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <svg
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                          >
                             <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
                             <circle cx="12" cy="13" r="4" />
                           </svg>
@@ -314,7 +344,12 @@ export default function ReportIncidentPage() {
                     ) : image ? (
                       <div className="upload-file-state">
                         <div className="upload-icon-circle">
-                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <svg
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                          >
                             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
                             <polyline points="14 2 14 8 20 8" />
                             <line x1="8" y1="13" x2="16" y2="13" />
@@ -322,12 +357,19 @@ export default function ReportIncidentPage() {
                           </svg>
                         </div>
                         <p className="upload-prompt">{image.name}</p>
-                        <p className="upload-subtext">Tap to replace document</p>
+                        <p className="upload-subtext">
+                          Tap to replace document
+                        </p>
                       </div>
                     ) : (
                       <div className="upload-empty-state">
                         <div className="upload-icon-circle">
-                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <svg
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                          >
                             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
                             <polyline points="17 8 12 3 7 8" />
                             <line x1="12" y1="3" x2="12" y2="15" />
@@ -350,7 +392,11 @@ export default function ReportIncidentPage() {
             </div>
 
             <div className="report-form-footer">
-              <button type="submit" className="submit-report-btn" disabled={isSubmitting}>
+              <button
+                type="submit"
+                className="submit-report-btn"
+                disabled={isSubmitting}
+              >
                 {isSubmitting ? (
                   <>
                     <span className="spinner"></span>
@@ -396,6 +442,52 @@ export default function ReportIncidentPage() {
           padding: 32px;
         }
 
+        .request-type-guide {
+          margin-bottom: 24px;
+        }
+
+        .request-type-guide-label {
+          margin: 0 0 8px;
+          color: var(--text-muted, #64748b);
+          font-size: 12px;
+          font-weight: 700;
+          letter-spacing: 0.04em;
+          text-transform: uppercase;
+        }
+
+        .request-type-guide-grid {
+          display: grid;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          gap: 10px;
+        }
+
+        .request-type-guide-card {
+          min-width: 0;
+          border: 1px solid #e2e8f0;
+          border-radius: var(--radius, 12px);
+          background: var(--surface-1, #f8fafc);
+          padding: 12px 14px;
+        }
+
+        .request-type-guide-card h3 {
+          margin: 0 0 5px;
+          color: var(--text-primary, #334d72);
+          font-size: 13.5px;
+          font-weight: 600;
+          line-height: 1.35;
+        }
+
+        .request-type-guide-card p {
+          margin: 0;
+          color: var(--text-secondary, #718198);
+          font-size: 12.5px;
+          line-height: 1.5;
+        }
+
+        .request-type-field {
+          width: min(100%, 420px);
+        }
+
         .request-type-panel {
           display: grid;
           grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -416,7 +508,10 @@ export default function ReportIncidentPage() {
           color: var(--navy);
           padding: 16px;
           cursor: pointer;
-          transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s;
+          transition:
+            border-color 0.2s,
+            box-shadow 0.2s,
+            transform 0.2s;
         }
 
         .request-type-option:hover:not(:disabled),
@@ -669,10 +764,13 @@ export default function ReportIncidentPage() {
         }
 
         @keyframes spin {
-          to { transform: rotate(360deg); }
+          to {
+            transform: rotate(360deg);
+          }
         }
 
         @media (max-width: 900px) {
+          .request-type-guide-grid,
           .request-type-panel,
           .request-meta-grid,
           .report-form-grid {
