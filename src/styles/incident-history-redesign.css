@@ -21,7 +21,7 @@
 .requests-page-header h1 {
   margin: 0;
   color: var(--navy);
-  font-size: clamp(30px, 3vw, 40px);
+  font-size: clamp(24px, 2.2vw, 30px);
   font-weight: 800;
   letter-spacing: -0.045em;
   line-height: 1.1;
@@ -89,16 +89,6 @@
 
 .requests-summary-item:last-child {
   border-right: 0;
-}
-
-.requests-summary-item.is-actionable {
-  cursor: pointer;
-}
-
-.requests-summary-item.is-actionable:hover,
-.requests-summary-item.is-actionable:focus-visible {
-  background: #fffdfa;
-  outline: none;
 }
 
 .requests-summary-icon {
@@ -658,12 +648,6 @@
 
 .requests-summary-detail {
   display: none;
-}
-
-.requests-summary-item.is-actionable:hover,
-.requests-summary-item.is-actionable:focus-visible {
-  background: #fffdfa;
-  box-shadow: none;
 }
 
 .requests-toolbar {

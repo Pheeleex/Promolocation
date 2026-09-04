@@ -61,9 +61,20 @@ function getMissingRequestFields({ requestType, title, description }) {
   return missingFields;
 }
 
+function BackArrow() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden="true">
+      <path d="M19 12H5" />
+      <path d="M12 19l-7-7 7-7" />
+    </svg>
+  );
+}
+
 export default function ReportIncidentPage() {
   const [requestType, setRequestType] = useState("incident_report");
   const [title, setTitle] = useState("");
+  const [browserLink, setBrowserLink] = useState("");
+  const [location, setLocation] = useState("");
   const [description, setDescription] = useState("");
   const [priority, setPriority] = useState("Medium");
   const [image, setImage] = useState(null);
@@ -205,6 +216,15 @@ export default function ReportIncidentPage() {
   return (
     <AppLayout activeNav="report_incident" mainContentClassName="detail-main">
       <div className="report-page-wrapper">
+        <button
+          type="button"
+          className="back-btn report-back-btn"
+          onClick={() => navigate("/incidents")}
+        >
+          <BackArrow />
+          Back to Requests
+        </button>
+
         <div className="report-header">
           <h1>New Help Desk Request</h1>
           <p>
@@ -233,162 +253,182 @@ export default function ReportIncidentPage() {
               </div>
             </div>
 
-            <div className="input-field-group request-type-field">
-              <label htmlFor="request-type">
-                Request Type <span className="required-mark">*</span>
-              </label>
-              <select
-                id="request-type"
-                value={requestType}
-                onChange={(event) =>
-                  handleRequestTypeChange(event.target.value)
-                }
-                disabled={isSubmitting}
-                className="premium-input-field"
-              >
-                {HELP_DESK_REQUEST_TYPES.map((type) => (
-                  <option key={type.value} value={type.value}>
-                    {type.label}
-                  </option>
-                ))}
-              </select>
+            <div className="report-field-grid">
+              <div className="input-field-group">
+                <label htmlFor="request-location">Issue Location</label>
+                <input
+                  id="request-location"
+                  type="text"
+                  placeholder="Where did this happen?"
+                  value={location}
+                  onChange={(event) => setLocation(event.target.value)}
+                  disabled={isSubmitting}
+                  className="premium-input-field"
+                />
+              </div>
+
+              <div className="input-field-group">
+                <label htmlFor="request-browser-link">Browser Link</label>
+                <input
+                  id="request-browser-link"
+                  type="url"
+                  placeholder="Paste a browser link"
+                  value={browserLink}
+                  onChange={(event) => setBrowserLink(event.target.value)}
+                  disabled={isSubmitting}
+                  className="premium-input-field"
+                />
+              </div>
             </div>
 
-            <div className="report-form-grid">
-              <div className="report-form-left">
-                <div className="input-field-group">
-                  <label htmlFor="request-title">
-                    Request Title <span className="required-mark">*</span>
-                  </label>
-                  <input
-                    id="request-title"
-                    type="text"
-                    placeholder={
-                      selectedRequestType?.value === "change_request"
-                        ? "Example: Update promotion dates for Zipline"
-                        : selectedRequestType?.value === "access_request"
-                          ? "Example: Grant Zipline admin access"
-                          : "Use a descriptive title that summarizes the request."
-                    }
-                    value={title}
-                    onChange={(event) => setTitle(event.target.value)}
-                    disabled={isSubmitting}
-                    className="premium-input-field"
-                  />
-                </div>
+            <div className="input-field-group">
+              <label htmlFor="request-title">
+                Request Title <span className="required-mark">*</span>
+              </label>
+              <input
+                id="request-title"
+                type="text"
+                placeholder={
+                  selectedRequestType?.value === "change_request"
+                    ? "Example: Update promotion dates for Zipline"
+                    : selectedRequestType?.value === "access_request"
+                      ? "Example: Grant Zipline admin access"
+                      : "Use a descriptive title that summarizes the request."
+                }
+                value={title}
+                onChange={(event) => setTitle(event.target.value)}
+                disabled={isSubmitting}
+                className="premium-input-field"
+              />
+            </div>
 
-                <div className="input-field-group">
-                  <label htmlFor="request-desc">
-                    Request Details <span className="required-mark">*</span>
-                  </label>
-                  <textarea
-                    id="request-desc"
-                    ref={descriptionTextareaRef}
-                    placeholder="Include the exact change needed, affected agency/promoters/brands/promotions, and any deadline or context..."
-                    value={description}
-                    onChange={(event) => setDescription(event.target.value)}
-                    disabled={isSubmitting}
-                    className="premium-textarea-field"
-                  />
-                </div>
-
-                <div className="request-meta-grid">
-                  <div className="input-field-group">
-                    <label htmlFor="request-priority">Priority</label>
-                    <select
-                      id="request-priority"
-                      value={priority}
-                      onChange={(event) => setPriority(event.target.value)}
-                      disabled={isSubmitting}
-                      className="premium-input-field"
-                    >
-                      {PRIORITY_OPTIONS.map((priorityOption) => (
-                        <option key={priorityOption} value={priorityOption}>
-                          {priorityOption}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
+            <div className="request-meta-grid">
+              <div className="input-field-group">
+                <label htmlFor="request-priority">Priority</label>
+                <select
+                  id="request-priority"
+                  value={priority}
+                  onChange={(event) => setPriority(event.target.value)}
+                  disabled={isSubmitting}
+                  className="premium-input-field"
+                >
+                  {PRIORITY_OPTIONS.map((priorityOption) => (
+                    <option key={priorityOption} value={priorityOption}>
+                      {priorityOption}
+                    </option>
+                  ))}
+                </select>
               </div>
 
-              <div className="report-form-right">
-                <div className="input-field-group">
-                  <label>Attachment</label>
-                  <div
-                    className={`premium-upload-zone ${preview ? "has-image" : ""} ${image && !preview ? "has-file" : ""}`}
-                    onClick={() =>
-                      !isSubmitting && fileInputRef.current.click()
-                    }
-                  >
-                    {preview ? (
-                      <>
-                        <img
-                          src={preview}
-                          alt="Request attachment preview"
-                          className="evidence-preview-img"
-                        />
-                        <div className="upload-overlay">
-                          <svg
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                          >
-                            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
-                            <circle cx="12" cy="13" r="4" />
-                          </svg>
-                          <span>Change Attachment</span>
-                        </div>
-                      </>
-                    ) : image ? (
-                      <div className="upload-file-state">
-                        <div className="upload-icon-circle">
-                          <svg
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                          >
-                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                            <polyline points="14 2 14 8 20 8" />
-                            <line x1="8" y1="13" x2="16" y2="13" />
-                            <line x1="8" y1="17" x2="16" y2="17" />
-                          </svg>
-                        </div>
-                        <p className="upload-prompt">{image.name}</p>
-                        <p className="upload-subtext">
-                          Tap to replace document
-                        </p>
-                      </div>
-                    ) : (
-                      <div className="upload-empty-state">
-                        <div className="upload-icon-circle">
-                          <svg
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                          >
-                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                            <polyline points="17 8 12 3 7 8" />
-                            <line x1="12" y1="3" x2="12" y2="15" />
-                          </svg>
-                        </div>
-                        <p className="upload-prompt">{attachmentPrompt}</p>
-                        <p className="upload-subtext">{attachmentSubtext}</p>
-                      </div>
-                    )}
-                    <input
-                      type="file"
-                      ref={fileInputRef}
-                      onChange={handleImageChange}
-                      accept={attachmentAccept}
-                      style={{ display: "none" }}
+              <div className="input-field-group request-type-field">
+                <label htmlFor="request-type">
+                  Request Type <span className="required-mark">*</span>
+                </label>
+                <select
+                  id="request-type"
+                  value={requestType}
+                  onChange={(event) =>
+                    handleRequestTypeChange(event.target.value)
+                  }
+                  disabled={isSubmitting}
+                  className="premium-input-field"
+                >
+                  {HELP_DESK_REQUEST_TYPES.map((type) => (
+                    <option key={type.value} value={type.value}>
+                      {type.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="input-field-group report-attachment-field">
+              <label>Attachment</label>
+              <div
+                className={`premium-upload-zone ${preview ? "has-image" : ""} ${image && !preview ? "has-file" : ""}`}
+                onClick={() =>
+                  !isSubmitting && fileInputRef.current.click()
+                }
+              >
+                {preview ? (
+                  <>
+                    <img
+                      src={preview}
+                      alt="Request attachment preview"
+                      className="evidence-preview-img"
                     />
+                    <div className="upload-overlay">
+                      <svg
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                      >
+                        <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                        <circle cx="12" cy="13" r="4" />
+                      </svg>
+                      <span>Change Attachment</span>
+                    </div>
+                  </>
+                ) : image ? (
+                  <div className="upload-file-state">
+                    <div className="upload-icon-circle">
+                      <svg
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                      >
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                        <polyline points="14 2 14 8 20 8" />
+                        <line x1="8" y1="13" x2="16" y2="13" />
+                        <line x1="8" y1="17" x2="16" y2="17" />
+                      </svg>
+                    </div>
+                    <p className="upload-prompt">{image.name}</p>
+                    <p className="upload-subtext">Tap to replace document</p>
                   </div>
-                </div>
+                ) : (
+                  <div className="upload-empty-state">
+                    <div className="upload-icon-circle">
+                      <svg
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                      >
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                        <polyline points="17 8 12 3 7 8" />
+                        <line x1="12" y1="3" x2="12" y2="15" />
+                      </svg>
+                    </div>
+                    <p className="upload-prompt">{attachmentPrompt}</p>
+                    <p className="upload-subtext">{attachmentSubtext}</p>
+                  </div>
+                )}
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleImageChange}
+                  accept={attachmentAccept}
+                  style={{ display: "none" }}
+                />
               </div>
+            </div>
+
+            <div className="input-field-group">
+              <label htmlFor="request-desc">
+                Request Details <span className="required-mark">*</span>
+              </label>
+              <textarea
+                id="request-desc"
+                ref={descriptionTextareaRef}
+                placeholder="Include the exact change needed and any deadline or context..."
+                value={description}
+                onChange={(event) => setDescription(event.target.value)}
+                disabled={isSubmitting}
+                className="premium-textarea-field"
+              />
             </div>
 
             <div className="report-form-footer">
@@ -417,6 +457,10 @@ export default function ReportIncidentPage() {
           display: flex;
           flex-direction: column;
           gap: 12px;
+        }
+
+        .report-back-btn {
+          align-self: flex-start;
         }
 
         .report-header h1 {
@@ -484,10 +528,6 @@ export default function ReportIncidentPage() {
           line-height: 1.5;
         }
 
-        .request-type-field {
-          width: min(100%, 420px);
-        }
-
         .request-type-panel {
           display: grid;
           grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -532,16 +572,20 @@ export default function ReportIncidentPage() {
           line-height: 1.45;
         }
 
-        .report-form-grid {
+        .report-field-grid {
           display: grid;
-          grid-template-columns: 1fr 340px;
-          gap: 40px;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 16px;
         }
 
         .request-meta-grid {
           display: grid;
           grid-template-columns: repeat(2, minmax(0, 1fr));
           gap: 16px;
+        }
+
+        .request-type-field {
+          width: 100%;
         }
 
         .input-field-group {
@@ -575,7 +619,7 @@ export default function ReportIncidentPage() {
         }
 
         .premium-textarea-field {
-          min-height: 180px;
+          min-height: 240px;
           padding: 16px;
           background: #f8fafc;
           border: 1.5px solid #e2e8f0;
@@ -597,7 +641,7 @@ export default function ReportIncidentPage() {
         .premium-upload-zone {
           border: 2px dashed #cbd5e1;
           border-radius: 16px;
-          height: 284px;
+          height: 220px;
           display: flex;
           align-items: center;
           justify-content: center;
@@ -773,7 +817,7 @@ export default function ReportIncidentPage() {
           .request-type-guide-grid,
           .request-type-panel,
           .request-meta-grid,
-          .report-form-grid {
+          .report-field-grid {
             grid-template-columns: 1fr;
           }
 

@@ -128,7 +128,6 @@ export default function IncidentHistoryPage() {
       : null;
   const summaryItems = [
     {
-      key: "all",
       label: "All Requests",
       count: mockHelpDeskRequests.length,
       detail: "Total",
@@ -136,16 +135,13 @@ export default function IncidentHistoryPage() {
       color: "blue",
     },
     {
-      key: canCreateRequest ? "Resolved" : "Submitted",
       label: "Awaiting Your Review",
       count: actionRequiredCount,
       detail: "Needs your action",
       icon: "awaiting",
       color: "orange",
-      actionable: actionRequiredCount > 0,
     },
     {
-      key: "In Progress",
       label: "In Progress",
       count: requestSummary["In Progress"] || 0,
       detail: "Being worked on",
@@ -153,7 +149,6 @@ export default function IncidentHistoryPage() {
       color: "green",
     },
     {
-      key: "Resolved",
       label: "Resolved",
       count: requestSummary.Resolved || 0,
       detail: "Completed",
@@ -161,7 +156,6 @@ export default function IncidentHistoryPage() {
       color: "purple",
     },
     {
-      key: "Closed",
       label: "Closed",
       count: requestSummary.Closed || 0,
       detail: "Closed",
@@ -175,7 +169,7 @@ export default function IncidentHistoryPage() {
       <div className="requests-page">
         <div className="requests-page-header">
           <div>
-            <h1>Requests</h1>
+            <h1>All Requests</h1>
             <p>Review incidents, change requests, access requests, and follow-up decisions.</p>
           </div>
           {canCreateRequest ? (
@@ -191,29 +185,21 @@ export default function IncidentHistoryPage() {
         </div>
 
         <div className="requests-summary-strip">
-          {summaryItems.map((item) => {
-            const SummaryItem = item.actionable ? "button" : "div";
-
-            return (
-              <SummaryItem
-                type={item.actionable ? "button" : undefined}
-                className={`requests-summary-item requests-summary-item--${item.color}${
-                  item.actionable ? " is-actionable" : ""
-                }`}
-                key={item.label}
-                onClick={item.actionable ? () => setStatus(item.key) : undefined}
-              >
-                <span className="requests-summary-icon">
-                  <SummaryIcon type={item.icon} />
-                </span>
-                <span className="requests-summary-copy">
-                  <span className="requests-summary-label">{item.label}</span>
-                  <strong>{item.count}</strong>
-                  <span className="requests-summary-detail">{item.detail}</span>
-                </span>
-              </SummaryItem>
-            );
-          })}
+          {summaryItems.map((item) => (
+            <div
+              className={`requests-summary-item requests-summary-item--${item.color}`}
+              key={item.label}
+            >
+              <span className="requests-summary-icon">
+                <SummaryIcon type={item.icon} />
+              </span>
+              <span className="requests-summary-copy">
+                <span className="requests-summary-label">{item.label}</span>
+                <strong>{item.count}</strong>
+                <span className="requests-summary-detail">{item.detail}</span>
+              </span>
+            </div>
+          ))}
         </div>
 
         <div className="requests-toolbar">
